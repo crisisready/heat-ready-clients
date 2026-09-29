@@ -1,0 +1,23 @@
+Package: heatready
+Title: Client for the HeatReady Heat-Risk API
+Version: 0.1.0
+Authors@R: person("CrisisReady", role = c("aut", "cre"), email = "datascience_crisisready@harvard.edu")
+Description: Thin R client for the HeatReady API, a single-endpoint REST
+    service serving neighborhood-resolution heat-risk metrics derived from
+    ERA5 climate reanalysis data. Provides an R6 client class with one
+    method per API action (listing/creating/fetching projects, heat-risk
+    metrics, vulnerability, air quality, and land-surface-temperature data)
+    plus a paging helper for downloading a whole project's metrics history.
+License: Apache License (>= 2) | file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Imports:
+    httr2 (>= 1.0.0),
+    R6
+Suggests:
+    testthat (>= 3.0.0),
+    mockery
+Config/testthat/edition: 3
+URL: https://github.com/crisisready/heat-ready-clients
+BugReports: https://github.com/crisisready/heat-ready-clients/issues
+Config/roxygen2/version: 8.1.0
