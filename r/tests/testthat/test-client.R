@@ -115,6 +115,49 @@ test_that("iter_metrics pages through all rows into one data frame", {
   expect_equal(rows$date, c("2026-01-01", "2026-01-02", "2026-01-03"))
 })
 
+test_that("iter_metrics survives a nested data.frame column across pages", {
+  # Regression test: a real 2026-demo-nyc-us pull hit
+  # "number of items to replace is not a multiple of replacement length" here,
+  # because jsonlite simplifies a nullable nested object (like the API's own
+  # `downscaled` field) into a data.frame-within-a-data.frame, and rbind()-ing
+  # two of those together fails once their per-row NA patterns differ.
+  client <- HeatReadyClient$new(username = "alice", key = "test-key", retry_delays = numeric(0))
+  make_page <- function(names, dates, delta_c) {
+    list(
+      project_id = "p", total_rows = 4, limit = 2, offset = if (dates[1] == "2026-01-01") 0 else 2,
+      metrics = data.frame(
+        name = names, date = dates,
+        downscaled = I(data.frame(tmax = I(data.frame(delta_c = delta_c))))
+      ),
+      polygon_coverage = list()
+    )
+  }
+  page_1 <- make_page(c("a", "a"), c("2026-01-01", "2026-01-02"), c(NA_real_, NA_real_))
+  page_2 <- make_page(c("a", "a"), c("2026-01-03", "2026-01-04"), c(1.5, 1.7))
+  httr2::local_mocked_responses(list(
+    httr2::response_json(200, body = page_1),
+    httr2::response_json(200, body = page_2)
+  ))
+  rows <- client$iter_metrics("p", page_size = 2)
+  expect_equal(nrow(rows), 4)
+  expect_equal(rows$date, c("2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04"))
+  expect_true(is.list(rows$downscaled))
+  expect_equal(rows$downscaled[[4]]$tmax$delta_c, 1.7)
+})
+
+test_that("iter_metrics raises a clear error on an initializing project", {
+  # A 202 response for a still-initializing project has no "metrics" key at
+  # all -- this must not be mistaken for "zero rows" and silently return
+  # an empty data frame.
+  client <- HeatReadyClient$new(username = "alice", key = "test-key", retry_delays = numeric(0))
+  httr2::local_mocked_responses(list(
+    httr2::response_json(202, body = list(project_id = "brand-new", status = "initializing", estimated_minutes = 15))
+  ))
+  err <- tryCatch(client$iter_metrics("brand-new"), error = function(e) e)
+  expect_s3_class(err, "heatready_error")
+  expect_equal(err$code, "project_not_ready")
+})
+
 test_that("iter_metrics stops on an empty first page", {
   client <- HeatReadyClient$new(username = "alice", key = "test-key", retry_delays = numeric(0))
   httr2::local_mocked_responses(list(

@@ -40,6 +40,41 @@ heatready_error <- function(message, code, status_code) {
 #' @keywords internal
 compact <- function(x) x[!vapply(x, is.null, logical(1))]
 
+#' Flatten a nested data.frame column into a plain list column
+#'
+#' `jsonlite`'s `simplifyVector` turns a JSON array of nested objects (e.g. a
+#' metrics row's nullable `downscaled` object, which itself nests `tmax`/
+#' `tmin`/`station`/`metrics` objects) into a data.frame-within-a-data.frame.
+#' That's fine for a single page, but `rbind()`-ing two such pages together
+#' reliably fails (`"number of items to replace is not a multiple of
+#' replacement length"`) once the nested frames' per-row NA patterns differ
+#' between pages. Converting to a plain list column (one named list per row,
+#' recursively) sidesteps the problem entirely and is arguably a more natural
+#' R representation of "a nullable nested object" anyway.
+#' @keywords internal
+flatten_nested_column <- function(col) {
+  # Flatten each sub-column exactly once (not once per row) -- recursing
+  # inside the per-row lapply below would make this quadratic (or worse, for
+  # multiply-nested columns) in the number of rows.
+  flat_subcols <- lapply(col, function(subcol) {
+    if (is.data.frame(subcol)) flatten_nested_column(subcol) else subcol
+  })
+  lapply(seq_len(nrow(col)), function(i) {
+    row <- lapply(flat_subcols, `[[`, i)
+    stats::setNames(row, names(col))
+  })
+}
+
+#' Replace any nested-data.frame columns in a metrics page with plain list
+#' columns, so pages can be safely `rbind()`-ed together.
+#' @keywords internal
+normalize_metrics_page <- function(df) {
+  if (!is.data.frame(df) || nrow(df) == 0) return(df)
+  nested_cols <- names(df)[vapply(df, is.data.frame, logical(1))]
+  for (col in nested_cols) df[[col]] <- I(flatten_nested_column(df[[col]]))
+  df
+}
+
 #' HeatReadyClient
 #'
 #' A thin, authenticated wrapper around the HeatReady `/evaluate` API. The
@@ -287,10 +322,20 @@ HeatReadyClient <- R6::R6Class("HeatReadyClient",
         page <- self$get_metrics(project_id, limit = page_size, offset = offset,
                                   date_from = date_from, date_to = date_to,
                                   include_forecast = include_forecast)
+        if (is.null(page$metrics)) {
+          stop(heatready_error(
+            message = sprintf(
+              "Project '%s' has no metrics yet -- it's still initializing (%s). Poll get_project_status() until 'start' is set before calling iter_metrics().",
+              project_id, page$message %||% page$status %||% "no metrics in response"
+            ),
+            code = "project_not_ready",
+            status_code = 202
+          ))
+        }
         rows <- page$metrics
         n <- if (is.data.frame(rows)) nrow(rows) else length(rows)
         if (is.null(n) || n == 0) break
-        pages[[length(pages) + 1]] <- rows
+        pages[[length(pages) + 1]] <- normalize_metrics_page(rows)
         offset <- offset + n
         if (offset >= page$total_rows) break
       }

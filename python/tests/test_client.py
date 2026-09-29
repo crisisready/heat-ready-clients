@@ -206,6 +206,21 @@ def test_get_lst_data_latest_only_omits_pagination_fields(client: HeatReadyClien
 
 
 @responses.activate
+def test_iter_metrics_raises_clear_error_on_initializing_project(client: HeatReadyClient) -> None:
+    # A 202 response for a still-initializing project has no "metrics" key at all --
+    # this must not be mistaken for "zero rows" and silently yield nothing.
+    responses.add(
+        responses.POST,
+        EVALUATE_URL,
+        json={"project_id": "brand-new", "status": "initializing", "estimated_minutes": 15},
+        status=202,
+    )
+    with pytest.raises(HeatReadyError) as exc_info:
+        list(client.iter_metrics("brand-new"))
+    assert exc_info.value.code == "project_not_ready"
+
+
+@responses.activate
 def test_backfill_lst_days_and_composite_prep_are_mutually_optional(client: HeatReadyClient) -> None:
     responses.add(
         responses.POST,

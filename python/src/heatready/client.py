@@ -248,6 +248,12 @@ class HeatReadyClient:
 
         Example:
             >>> rows = list(client.iter_metrics("2026-demo-nyc-us"))
+
+        Raises:
+            HeatReadyError: with ``code="project_not_ready"`` if the project
+                is still initializing (a 202 response has no ``metrics`` key
+                at all) -- poll :meth:`get_project_status` until ``start`` is
+                set before calling this.
         """
         offset = 0
         while True:
@@ -259,7 +265,18 @@ class HeatReadyClient:
                 date_to=date_to,
                 include_forecast=include_forecast,
             )
-            rows = page.get("metrics", [])
+            if "metrics" not in page:
+                raise HeatReadyError(
+                    message=(
+                        f"Project '{project_id}' has no metrics yet -- it's still "
+                        f"initializing ({page.get('message') or page.get('status')}). "
+                        "Poll get_project_status() until 'start' is set before calling "
+                        "iter_metrics()."
+                    ),
+                    code="project_not_ready",
+                    status_code=202,
+                )
+            rows = page["metrics"]
             yield from rows
             offset += len(rows)
             if not rows or offset >= page.get("total_rows", offset):
