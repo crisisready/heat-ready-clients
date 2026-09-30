@@ -470,9 +470,15 @@ HeatReadyClient <- R6::R6Class("HeatReadyClient",
     #' @param project_id Project identifier.
     backfill_vulnerability = function(project_id) self$call("backfill-vulnerability", list(project_id = project_id)),
 
-    #' @description Fetch a project's per-polygon vulnerability indicators.
+    #' @description Fetch a project's per-polygon vulnerability indicators, one
+    #'   page of up to `limit` polygons. Page with `offset` when a project has
+    #'   more polygons than one page holds.
     #' @param project_id Project identifier.
-    get_vulnerability_data = function(project_id) self$call("get-vulnerability-data", list(project_id = project_id)),
+    #' @param limit Max polygons per page (default 500, max 5000).
+    #' @param offset Polygons to skip, for paging past `limit`.
+    get_vulnerability_data = function(project_id, limit = 500, offset = 0) {
+      self$call("get-vulnerability-data", list(project_id = project_id, limit = limit, offset = offset))
+    },
 
     #' @description Recompute population/timezone/area columns from the project's current GeoJSON.
     #' @param project_id Project identifier.

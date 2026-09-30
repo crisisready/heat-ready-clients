@@ -1,0 +1,184 @@
+{
+ "title": "HeatReady walkthrough: New York City by census tract",
+ "intro": [
+  {
+   "type": "prose",
+   "text": "This walkthrough repeats the analyses from the HeatReady presentation with the Python or R client. It starts with one hot day across Manhattan and Brooklyn, finds the census tracts where nights stayed hot through the summer, and then looks at where adults 75 and older and children under 5 live within those tracts. The last two steps bring in outside data and create a project from your own boundaries."
+  },
+  {
+   "type": "prose",
+   "text": "Every step runs against the live HeatReady API. The code comes in Python and R. Pick one language and follow it through; the results are the same."
+  }
+ ],
+ "sections": [
+  {
+   "title": "Before you start",
+   "blocks": [
+    {
+     "type": "prose",
+     "text": "You need a HeatReady username and key. At a workshop, claim one at [nishantkishore.com/workshop](https://nishantkishore.com/workshop) with the code from the slide. Otherwise, write to [datascience_crisisready@harvard.edu](mailto:datascience_crisisready@harvard.edu)."
+    },
+    {
+     "type": "prose",
+     "text": "Install the client and the two mapping packages this walkthrough uses."
+    },
+    {
+     "type": "code",
+     "python": "# Python 3.10 or newer\npip install \"git+https://github.com/crisisready/heat-ready-clients.git#subdirectory=python\" geopandas matplotlib",
+     "python_lang": "bash",
+     "r": "# R\ninstall.packages(c(\"remotes\", \"sf\", \"ggplot2\"))\nremotes::install_github(\"crisisready/heat-ready-clients\", subdir = \"r\")"
+    },
+    {
+     "type": "prose",
+     "text": "The code reads your username and key from two environment variables, `HEATREADY_USERNAME` and `HEATREADY_KEY`. The workshop page shows the exact lines to set them in a terminal, in Python, or in R. Keep the key out of any file you plan to share."
+    }
+   ]
+  },
+  {
+   "title": "1. Connect",
+   "blocks": [
+    {
+     "type": "prose",
+     "text": "`ping()` checks that your username and key work. The project for this walkthrough is `nyc-manhattan-brooklyn-2026`, the 1,114 census tracts of Manhattan and Brooklyn. It is public, so any HeatReady account can read it."
+    },
+    {
+     "type": "code",
+     "python": "import os\nimport numpy as np\nimport pandas as pd\nimport geopandas as gpd\nimport matplotlib.pyplot as plt\nfrom matplotlib.colors import ListedColormap\nfrom heatready import HeatReadyClient\n\nclient = HeatReadyClient(\n    username=os.environ[\"HEATREADY_USERNAME\"],\n    key=os.environ[\"HEATREADY_KEY\"],\n)\nprint(client.ping())\n\nPROJECT = \"nyc-manhattan-brooklyn-2026\"\nstatus = client.get_project_status(PROJECT)\nprint(status[\"polygon_count\"], \"census tracts\")",
+     "python_lang": "python",
+     "r": "library(heatready)\nlibrary(sf)\nlibrary(ggplot2)\n\nclient <- HeatReadyClient$new(\n  username = Sys.getenv(\"HEATREADY_USERNAME\"),\n  key      = Sys.getenv(\"HEATREADY_KEY\")\n)\nclient$ping()\n\nPROJECT <- \"nyc-manhattan-brooklyn-2026\"\nstatus <- client$get_project_status(PROJECT)\ncat(status$polygon_count, \"census tracts\\n\")"
+    },
+    {
+     "type": "prose",
+     "text": "The API does not return tract boundaries, so the shapes for mapping come from a file in this repository. Each tract's `name` matches the name the API uses, and `neighborhood` is its New York City Neighborhood Tabulation Area."
+    },
+    {
+     "type": "code",
+     "python": "TRACTS_URL = \"https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson\"\ntracts = gpd.read_file(TRACTS_URL)\ntracts.plot(color=\"lightgrey\", edgecolor=\"white\", linewidth=0.2, figsize=(6, 7)).set_axis_off()",
+     "python_lang": "python",
+     "r": "TRACTS_URL <- \"https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson\"\ntracts <- st_read(TRACTS_URL, quiet = TRUE)\nggplot(tracts) + geom_sf(fill = \"grey85\", colour = \"white\", linewidth = 0.1) + theme_void()"
+    }
+   ]
+  },
+  {
+   "title": "2. One hot day, tract by tract",
+   "blocks": [
+    {
+     "type": "prose",
+     "text": "Each row from `iter_metrics()` is one tract on one local day. We pull 5 June 2026, the day the presentation opens on."
+    },
+    {
+     "type": "prose",
+     "text": "Two values matter here. `day_t2m_max` is the daily high from the ERA5-Land grid, whose cells are about 9 km across. The `downscaled` block carries the same high after the HeatReady model adjusts it for the tract's own surroundings, such as land cover, tree canopy, and elevation. Where a tract has no adjustment, we keep the grid value."
+    },
+    {
+     "type": "code",
+     "python": "rows = list(client.iter_metrics(PROJECT, date_from=\"2026-06-05\", date_to=\"2026-06-05\"))\n\ndef tract_high(row):\n    ds = row.get(\"downscaled\") or {}\n    return ds.get(\"metrics\", {}).get(\"day_t2m_max\", row[\"day_t2m_max\"])\n\nday = pd.DataFrame({\n    \"name\": [r[\"name\"] for r in rows],\n    \"grid_high\": [r[\"day_t2m_max\"] for r in rows],\n    \"tract_high\": [tract_high(r) for r in rows],\n})\nprint(day[\"grid_high\"].round(2).nunique(), \"distinct grid values\")\nprint(day[[\"grid_high\", \"tract_high\"]].quantile([0.05, 0.95]).round(1))",
+     "python_lang": "python",
+     "r": "rows <- client$iter_metrics(PROJECT, date_from = \"2026-06-05\", date_to = \"2026-06-05\")\n\ntract_high <- vapply(seq_len(nrow(rows)), function(i) {\n  ds <- rows$downscaled[[i]]$metrics$day_t2m_max\n  if (is.null(ds)) rows$day_t2m_max[i] else ds\n}, numeric(1))\n\nday <- data.frame(name = rows$name, grid_high = rows$day_t2m_max, tract_high = tract_high)\ncat(length(unique(round(day$grid_high, 2))), \"distinct grid values\\n\")\nsapply(day[c(\"grid_high\", \"tract_high\")], quantile, probs = c(0.05, 0.95)) |> round(1)"
+    },
+    {
+     "type": "prose",
+     "text": "The grid gives the two boroughs 6 different values, spread over 1.5 °C. Across the tracts, the high runs from 32.4 to 34.3 °C between the 5th and 95th percentiles. The map below puts every tract in fixed half-degree classes, so one colour always means the same temperature."
+    },
+    {
+     "type": "code",
+     "python": "BREAKS = [-np.inf, 32, 32.5, 33, 33.5, 34, 34.5, 35, np.inf]\nLABELS = [\"below 32\", \"32 to 32.5\", \"32.5 to 33\", \"33 to 33.5\", \"33.5 to 34\", \"34 to 34.5\", \"34.5 to 35\", \"35 and above\"]\nCOLOURS = [\"#4575b4\", \"#74add1\", \"#abd9e9\", \"#e0f3f8\", \"#fee090\", \"#fdae61\", \"#f46d43\", \"#d73027\"]\n\nhot_day = tracts.merge(day, on=\"name\")\nhot_day[\"class\"] = pd.cut(hot_day[\"tract_high\"], BREAKS, labels=LABELS)\nax = hot_day.plot(column=\"class\", cmap=ListedColormap(COLOURS), legend=True, figsize=(7, 8),\n                  legend_kwds={\"title\": \"Daily high (°C)\", \"loc\": \"upper left\", \"bbox_to_anchor\": (1, 1)})\nax.set_title(\"Daily high, 5 June 2026\")\nax.set_axis_off()\n\nprint(hot_day.nlargest(5, \"tract_high\")[[\"neighborhood\", \"borough\", \"tract_high\"]])",
+     "python_lang": "python",
+     "r": "BREAKS <- c(-Inf, 32, 32.5, 33, 33.5, 34, 34.5, 35, Inf)\nLABELS <- c(\"below 32\", \"32 to 32.5\", \"32.5 to 33\", \"33 to 33.5\", \"33.5 to 34\", \"34 to 34.5\", \"34.5 to 35\", \"35 and above\")\nCOLOURS <- c(\"#4575b4\", \"#74add1\", \"#abd9e9\", \"#e0f3f8\", \"#fee090\", \"#fdae61\", \"#f46d43\", \"#d73027\")\n\nhot_day <- merge(tracts, day, by = \"name\")\nhot_day$class <- cut(hot_day$tract_high, BREAKS, labels = LABELS)\nggplot(hot_day) +\n  geom_sf(aes(fill = class), colour = NA) +\n  scale_fill_manual(values = setNames(COLOURS, LABELS), drop = FALSE, name = \"Daily high (\\u00b0C)\") +\n  labs(title = \"Daily high, 5 June 2026\") +\n  theme_void()\n\nhead(st_drop_geometry(hot_day)[order(-hot_day$tract_high), c(\"neighborhood\", \"borough\", \"tract_high\")], 5)"
+    },
+    {
+     "type": "prose",
+     "text": "The hottest tracts that afternoon were in Inwood and East Harlem, up to 2.6 °C above the grid cell they sit in."
+    }
+   ]
+  },
+  {
+   "title": "3. The highest-risk tracts: nights that stayed hot",
+   "blocks": [
+    {
+     "type": "prose",
+     "text": "The body recovers from a hot day after dark, so a night that stays warm carries the risk forward. `get_nighttime_persistence()` counts, for each tract, the nights this season when the temperature never fell below 20 °C. We call the top quarter of tracts on that count the highest-risk tracts, the same cut the presentation uses."
+    },
+    {
+     "type": "code",
+     "python": "nights = client.get_nighttime_persistence(PROJECT)\nhot_nights = pd.DataFrame({\n    \"name\": list(nights[\"per_tract\"]),\n    \"hot_nights\": [t[\"no_relief_count_season\"] for t in nights[\"per_tract\"].values()],\n    \"nights_tracked\": [t[\"n_nights_tracked\"] for t in nights[\"per_tract\"].values()],\n})\n\nrisk = tracts.merge(hot_nights, on=\"name\")\ncutoff = risk[\"hot_nights\"].quantile(0.75)\nrisk[\"highest_risk\"] = risk[\"hot_nights\"] >= cutoff\nprint(\"As of\", nights[\"as_of_date\"], \"- cutoff:\", cutoff, \"hot nights\")\nprint(risk[\"highest_risk\"].sum(), \"highest-risk tracts\")\nprint(risk[risk[\"highest_risk\"]][\"neighborhood\"].value_counts().head(6))\n\nax = risk.plot(color=\"lightgrey\", figsize=(7, 8))\nrisk[risk[\"highest_risk\"]].plot(ax=ax, color=\"#d73027\")\nax.set_title(f\"Top quarter of tracts for hot nights (at least {cutoff:.0f})\")\nax.set_axis_off()",
+     "python_lang": "python",
+     "r": "nights <- client$get_nighttime_persistence(PROJECT)\nhot_nights <- data.frame(\n  name           = names(nights$per_tract),\n  hot_nights     = vapply(nights$per_tract, function(t) as.numeric(t$no_relief_count_season), numeric(1)),\n  nights_tracked = vapply(nights$per_tract, function(t) as.numeric(t$n_nights_tracked), numeric(1))\n)\n\nrisk <- merge(tracts, hot_nights, by = \"name\")\ncutoff <- quantile(risk$hot_nights, 0.75)\nrisk$highest_risk <- risk$hot_nights >= cutoff\ncat(\"As of\", nights$as_of_date, \"- cutoff:\", cutoff, \"hot nights\\n\")\ncat(sum(risk$highest_risk), \"highest-risk tracts\\n\")\nhead(sort(table(risk$neighborhood[risk$highest_risk]), decreasing = TRUE), 6)\n\nggplot(risk) +\n  geom_sf(aes(fill = highest_risk), colour = NA) +\n  scale_fill_manual(values = c(`FALSE` = \"grey85\", `TRUE` = \"#d73027\"), guide = \"none\") +\n  labs(title = sprintf(\"Top quarter of tracts for hot nights (at least %.0f)\", cutoff)) +\n  theme_void()"
+    },
+    {
+     "type": "prose",
+     "text": "On 28 September 2026, 311 tracts had at least 74 hot nights out of the 120 tracked since 1 June. Many tracts share the same count, so the top quarter holds a few more than a quarter of the city. 284 of the 311 are in Brooklyn, with the most in Borough Park, Bensonhurst, and Brownsville. The count updates every day, so a later run gives slightly different numbers."
+    }
+   ]
+  },
+  {
+   "title": "4. Who lives in the highest-risk tracts",
+   "blocks": [
+    {
+     "type": "prose",
+     "text": "`get_vulnerability_data()` returns population by age group for each tract, from WorldPop. It returns 500 tracts per call unless asked for more, so we set `limit` above the project's 1,114. We turn the counts into people per square kilometre so small, dense tracts compare fairly with large ones. Within the highest-risk tracts, we then take the top quarter for adults 75 and older and the top quarter for children under 5."
+    },
+    {
+     "type": "code",
+     "python": "vuln = pd.DataFrame(client.get_vulnerability_data(PROJECT, limit=5000)[\"vulnerability\"])\nages = vuln[[\"name\", \"pop_elderly_75plus\", \"pop_under5\"]]\n\nhigh = risk[risk[\"highest_risk\"]].merge(ages, on=\"name\")\nhigh[\"area_km2\"] = high.to_crs(6933).area / 1e6\nhigh[\"older_per_km2\"] = high[\"pop_elderly_75plus\"] / high[\"area_km2\"]\nhigh[\"young_per_km2\"] = high[\"pop_under5\"] / high[\"area_km2\"]\n\nhigh[\"older\"] = high[\"older_per_km2\"] >= high[\"older_per_km2\"].quantile(0.75)\nhigh[\"young\"] = high[\"young_per_km2\"] >= high[\"young_per_km2\"].quantile(0.75)\nhigh[\"group\"] = np.select(\n    [high[\"older\"] & high[\"young\"], high[\"older\"], high[\"young\"]],\n    [\"Both\", \"Adults 75+\", \"Children under 5\"],\n    default=\"Other highest-risk tracts\",\n)\nprint(high[\"group\"].value_counts())\nprint(high[high[\"group\"] == \"Both\"].nlargest(5, \"hot_nights\")[[\"name\", \"neighborhood\", \"hot_nights\"]])\n\nGROUP_COLOURS = {\"Both\": \"#7b3294\", \"Adults 75+\": \"#d7191c\", \"Children under 5\": \"#2c7bb6\", \"Other highest-risk tracts\": \"#fdae61\"}\nax = risk.plot(color=\"lightgrey\", figsize=(7, 8))\nfor group, colour in GROUP_COLOURS.items():\n    high[high[\"group\"] == group].plot(ax=ax, color=colour, label=group)\nax.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=c) for c in GROUP_COLOURS.values()],\n          labels=list(GROUP_COLOURS), loc=\"upper left\", bbox_to_anchor=(1, 1))\nax.set_title(\"Highest-risk tracts by who lives there\")\nax.set_axis_off()",
+     "python_lang": "python",
+     "r": "vuln <- client$get_vulnerability_data(PROJECT, limit = 5000)$vulnerability\nages <- vuln[c(\"name\", \"pop_elderly_75plus\", \"pop_under5\")]\n\nhigh <- merge(risk[risk$highest_risk, ], ages, by = \"name\")\nhigh$area_km2 <- as.numeric(st_area(st_transform(high, 6933))) / 1e6\nhigh$older_per_km2 <- high$pop_elderly_75plus / high$area_km2\nhigh$young_per_km2 <- high$pop_under5 / high$area_km2\n\nhigh$older <- high$older_per_km2 >= quantile(high$older_per_km2, 0.75, na.rm = TRUE)\nhigh$young <- high$young_per_km2 >= quantile(high$young_per_km2, 0.75, na.rm = TRUE)\nhigh$group <- ifelse(high$older & high$young, \"Both\",\n              ifelse(high$older, \"Adults 75+\",\n              ifelse(high$young, \"Children under 5\", \"Other highest-risk tracts\")))\ntable(high$group)\nboth <- st_drop_geometry(high[high$group == \"Both\", c(\"name\", \"neighborhood\", \"hot_nights\")])\nhead(both[order(-both$hot_nights), ], 5)\n\nGROUP_COLOURS <- c(\"Both\" = \"#7b3294\", \"Adults 75+\" = \"#d7191c\", \"Children under 5\" = \"#2c7bb6\", \"Other highest-risk tracts\" = \"#fdae61\")\nggplot() +\n  geom_sf(data = risk, fill = \"grey85\", colour = NA) +\n  geom_sf(data = high, aes(fill = group), colour = NA) +\n  scale_fill_manual(values = GROUP_COLOURS, breaks = names(GROUP_COLOURS), name = NULL) +\n  labs(title = \"Highest-risk tracts by who lives there\") +\n  theme_void()"
+    },
+    {
+     "type": "prose",
+     "text": "Of the 311 highest-risk tracts, 78 are in the top quarter for adults 75 and older, 78 for children under 5, and 36 for both. Census Tract 116 in Sunset Park, the tract the presentation follows, is one of the 36 and has the most hot nights among them, 79."
+    },
+    {
+     "type": "prose",
+     "text": "Other age groups work the same way. `pop_elderly_65plus` gives adults 65 and older, and the `frac_` columns give each group as a share of the tract's population."
+    }
+   ]
+  },
+  {
+   "title": "5. Add your own data",
+   "blocks": [
+    {
+     "type": "prose",
+     "text": "The API covers heat and population. Much of what matters locally lives in other files. As an example, NYC Aging publishes the location of every older adult center in the city on [NYC Open Data](https://data.cityofnewyork.us/d/u7wp-np5k). A copy of the 301 centers sits in this repository so the step works for a full room at once. We count the centers within 400 metres, about a five-minute walk, of each highest-risk tract with many older residents."
+    },
+    {
+     "type": "code",
+     "python": "CENTERS_URL = \"https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv\"\ncenters = pd.read_csv(CENTERS_URL)\ncenters = gpd.GeoDataFrame(centers, geometry=gpd.points_from_xy(centers[\"longitude\"], centers[\"latitude\"]), crs=4326)\n\nolder = high[high[\"older\"]].to_crs(32618)\npoints = centers.to_crs(32618)\nolder[\"centers_400m\"] = [int((points.distance(shape) <= 400).sum()) for shape in older.geometry]\nprint((older[\"centers_400m\"] > 0).sum(), \"of\", len(older), \"have a center within 400 m\")\nprint(older[older[\"centers_400m\"] == 0][[\"neighborhood\", \"hot_nights\"]].sort_values(\"hot_nights\", ascending=False))",
+     "python_lang": "python",
+     "r": "CENTERS_URL <- \"https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv\"\ncenters <- read.csv(CENTERS_URL)\ncenters <- st_as_sf(centers, coords = c(\"longitude\", \"latitude\"), crs = 4326)\n\nolder <- st_transform(high[high$older, ], 32618)\npoints <- st_transform(centers, 32618)\nolder$centers_400m <- lengths(st_is_within_distance(older, points, dist = 400))\ncat(sum(older$centers_400m > 0), \"of\", nrow(older), \"have a center within 400 m\\n\")\nno_center <- st_drop_geometry(older[older$centers_400m == 0, c(\"neighborhood\", \"hot_nights\")])\nno_center[order(-no_center$hot_nights), ]"
+    },
+    {
+     "type": "prose",
+     "text": "57 of the 78 tracts have an older adult center within 400 metres. The other 21 are a natural first list for outreach. The same pattern works for any file with coordinates or tract IDs, such as clinics, cooling centers, schools, or your own survey sites."
+    }
+   ]
+  },
+  {
+   "title": "6. Start your own project",
+   "blocks": [
+    {
+     "type": "prose",
+     "text": "A project starts from a GeoJSON FeatureCollection with one feature per area and a `name` property on each feature. The name is how every result comes back, so use names people will recognize. Census tracts, wards, districts, or shapes drawn by hand at [geojson.io](https://geojson.io) all work."
+    },
+    {
+     "type": "prose",
+     "text": "The example below makes a small project from three Sunset Park tracts. Swap in your own file and project ID."
+    },
+    {
+     "type": "code",
+     "python": "import json\nimport time\n\nmy_areas = tracts[tracts[\"geoid\"].isin([\"36047011200\", \"36047011400\", \"36047011600\"])]\nmy_areas = my_areas.assign(name=my_areas[\"neighborhood\"] + \" \" + my_areas[\"geoid\"].str[-6:])[[\"name\", \"geometry\"]]\ngeojson = json.loads(my_areas.to_json())\n# Or read your own file:  geojson = json.load(open(\"my_areas.geojson\"))\n\nMY_PROJECT = \"my-first-project\"\nprint(client.create_project(MY_PROJECT, geojson)[\"message\"])\n\nwhile not client.get_project_status(MY_PROJECT).get(\"start\"):\n    time.sleep(30)\nprint(\"Ready\")\n\nmine = pd.DataFrame(client.iter_metrics(MY_PROJECT))\nprint(mine[[\"name\", \"date\", \"day_t2m_max\", \"nighttime_t2m_min\"]].tail())",
+     "python_lang": "python",
+     "r": "my_areas <- tracts[tracts$geoid %in% c(\"36047011200\", \"36047011400\", \"36047011600\"), ]\nmy_areas$name <- paste(my_areas$neighborhood, substr(my_areas$geoid, 6, 11))\npath <- tempfile(fileext = \".geojson\")\nst_write(my_areas[\"name\"], path, quiet = TRUE)\ngeojson <- jsonlite::read_json(path)\n# Or read your own file:  geojson <- jsonlite::read_json(\"my_areas.geojson\")\n\nMY_PROJECT <- \"my-first-project\"\nclient$create_project(MY_PROJECT, geojson)$message\n\nwhile (is.null(client$get_project_status(MY_PROJECT)$start)) Sys.sleep(30)\ncat(\"Ready\\n\")\n\nmine <- client$iter_metrics(MY_PROJECT)\ntail(mine[c(\"name\", \"date\", \"day_t2m_max\", \"nighttime_t2m_min\")])"
+    },
+    {
+     "type": "prose",
+     "text": "A new project fills in within a few minutes. It starts with the last two weeks of daily heat metrics, then adds age groups, land cover, and air quality shortly after. Steps 2 to 5 work the same way with `PROJECT` set to your own ID, your own boundary file in place of the tract file, and a date from your project's history in step 2. The hot-night count in step 3 grows by one night each day, and `backfill_project()` adds up to 30 more days of history before the start date. The tract-level adjustment from step 2 is added by the daily update, which runs at 06:00 UTC."
+    },
+    {
+     "type": "prose",
+     "text": "A workshop key stops working one week after it is claimed, and its projects are deleted then. To keep them, make your account permanent at [nishantkishore.com/workshop](https://nishantkishore.com/workshop) before then. The full list of API actions is in the [API reference](https://github.com/crisisready/heat-risk-data-api/blob/main/docs/api.md)."
+    }
+   ]
+  }
+ ]
+}

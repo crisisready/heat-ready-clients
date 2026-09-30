@@ -391,9 +391,11 @@ class HeatReadyClient:
         """Extract vulnerability indicators (RWI, VIIRS, health facilities, etc.) for a project."""
         return self._call("backfill-vulnerability", {"project_id": project_id})
 
-    def get_vulnerability_data(self, project_id: str) -> dict[str, Any]:
-        """Fetch a project's per-polygon vulnerability indicators."""
-        return self._call("get-vulnerability-data", {"project_id": project_id})
+    def get_vulnerability_data(self, project_id: str, limit: int = 500, offset: int = 0) -> dict[str, Any]:
+        """Fetch a project's per-polygon vulnerability indicators, one page of up to
+        ``limit`` polygons (the API's default 500, max 5000). Page with ``offset``
+        when a project has more polygons than one page holds."""
+        return self._call("get-vulnerability-data", {"project_id": project_id, "limit": limit, "offset": offset})
 
     def resync_population(self, project_id: str) -> dict[str, Any]:
         """Recompute population/timezone/area columns from the project's current GeoJSON."""

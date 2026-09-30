@@ -966,16 +966,22 @@ org's, and public projects).
 \if{html}{\out{<a id="method-HeatReadyClient-get_vulnerability_data"></a>}}
 \if{latex}{\out{\hypertarget{method-HeatReadyClient-get_vulnerability_data}{}}}
 \subsection{\code{HeatReadyClient$get_vulnerability_data()}}{
-  Fetch a project's per-polygon vulnerability indicators.
+  Fetch a project's per-polygon vulnerability indicators, one
+  page of up to \code{limit} polygons. Page with \code{offset} when a project has
+  more polygons than one page holds.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{HeatReadyClient$get_vulnerability_data(project_id)}
+    \preformatted{HeatReadyClient$get_vulnerability_data(project_id, limit = 500, offset = 0)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{project_id}}{Project identifier.}
+
+      \item{\code{limit}}{Max polygons per page (default 500, max 5000).}
+
+      \item{\code{offset}}{Polygons to skip, for paging past \code{limit}.}
     }
     \if{html}{\out{</div>}}
   }

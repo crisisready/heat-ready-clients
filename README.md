@@ -11,7 +11,9 @@ calls in each language, so you write `client.list_projects()` instead of buildin
 - **[`python/`](python/)** — the `heatready` Python package
 - **[`r/`](r/)** — the `heatready` R package
 - **[`docs/quickstart.md`](docs/quickstart.md)** — a single walkthrough covering both languages, using the
-  live public demo project `2026-demo-nyc-us`
+  live public project `nyc-manhattan-brooklyn-2026`
+- **[`walkthrough/`](walkthrough/)** — the workshop walkthrough: the analyses from the HeatReady
+  presentation in Python and R, from one hot day to a project of your own
 
 ## Install
 
@@ -27,7 +29,8 @@ remotes::install_github("crisisready/heat-ready-clients", subdir = "r")
 
 ## Getting an API key
 
-Contact [datascience_crisisready@harvard.edu](mailto:datascience_crisisready@harvard.edu), or redeem an
+At a workshop, claim one at [nishantkishore.com/workshop](https://nishantkishore.com/workshop). Otherwise,
+contact [datascience_crisisready@harvard.edu](mailto:datascience_crisisready@harvard.edu), or redeem an
 invite code if one was issued to you (see [Credential setup](docs/quickstart.md#credential-setup) in the
 quick-start guide).
 

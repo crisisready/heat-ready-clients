@@ -17,9 +17,9 @@ client = HeatReadyClient(username="YOUR_USERNAME", key="YOUR_KEY")
 
 client.status()                      # public health check, no credentials needed
 client.list_projects()               # every project visible to you
-client.get_project_status("2026-demo-nyc-us")
-metrics = client.get_metrics("2026-demo-nyc-us", limit=10)   # one page
-all_rows = list(client.iter_metrics("2026-demo-nyc-us"))     # every row, auto-paged
+client.get_project_status("nyc-manhattan-brooklyn-2026")
+metrics = client.get_metrics("nyc-manhattan-brooklyn-2026", limit=10)   # one page
+all_rows = list(client.iter_metrics("nyc-manhattan-brooklyn-2026", date_from="2026-09-01"))  # every row, auto-paged
 ```
 
 See [`docs/quickstart.md`](../docs/quickstart.md) at the repo root for a full walkthrough against the live
@@ -79,7 +79,7 @@ Commonly used, non-root methods:
 | `create_project(project_id, geojson)` | Create a new project |
 | `get_metrics(project_id, ...)` | One page of daily heat-risk metrics |
 | `iter_metrics(project_id, ...)` | Every metrics row, auto-paged |
-| `get_vulnerability_data(project_id)` | Per-polygon vulnerability indicators |
+| `get_vulnerability_data(project_id, limit=500, offset=0)` | Per-polygon vulnerability indicators, one page (max 5000 polygons) |
 | `get_air_quality_data(project_id, ...)` | Daily air-quality rows |
 | `get_lst_data(project_id, ...)` | Land-surface-temperature rows |
 | `get_data_availability(project_id)` | Which data layers exist for a project |
