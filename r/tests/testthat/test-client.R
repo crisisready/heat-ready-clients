@@ -193,3 +193,17 @@ test_that("backfill_lst sends only the days field when composite_prep is omitted
   expect_equal(sent$payload$days, 90)
   expect_null(sent$payload$composite_prep)
 })
+
+test_that("get_vulnerability_data sends limit and offset", {
+  client <- HeatReadyClient$new(username = "alice", key = "test-key", retry_delays = numeric(0))
+  captured <- NULL
+  httr2::local_mocked_responses(function(req) {
+    captured <<- req
+    httr2::response_json(200, body = list(vulnerability = list(), limit = 5000, offset = 0))
+  })
+  client$get_vulnerability_data("p", limit = 5000)
+  expect_equal(captured$body$data$payload$limit, 5000)
+  expect_equal(captured$body$data$payload$offset, 0)
+  client$get_vulnerability_data("p")
+  expect_equal(captured$body$data$payload$limit, 500)
+})

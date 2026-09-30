@@ -1,14 +1,15 @@
 # Quick start: Python and R clients
 
 This walks through installing either client and pulling data from the live public demo project
-**`2026-demo-nyc-us`** (New York City) end to end, in both Python and R. Every command below runs against
+**`nyc-manhattan-brooklyn-2026`** (the census tracts of Manhattan and Brooklyn) end to end, in both Python and R. Every command below runs against
 the real, production HeatReady API — there's no local mock server or sandbox involved.
 
 ## 1. Credential setup
 
-You need a HeatReady username and API key. Contact
-[datascience_crisisready@harvard.edu](mailto:datascience_crisisready@harvard.edu), or redeem an invite code
-if one was issued to you for this workshop.
+You need a HeatReady username and API key. At a workshop, claim one at
+[nishantkishore.com/workshop](https://nishantkishore.com/workshop) with the code from the slide. Otherwise,
+contact [datascience_crisisready@harvard.edu](mailto:datascience_crisisready@harvard.edu), or redeem an
+invite code if one was issued to you.
 
 **Don't hardcode your key in a script you might commit or share.** Set it as an environment variable
 instead:
@@ -60,18 +61,18 @@ projects = client.list_projects()
 print(len(projects["projects"]), "projects visible")
 
 # Look up the demo project's metadata.
-status = client.get_project_status("2026-demo-nyc-us")
+status = client.get_project_status("nyc-manhattan-brooklyn-2026")
 print(status["status"], status["polygon_count"], "polygons")
-# active 188 polygons
+# active 1114 polygons
 
-# Fetch one page of its daily heat-risk metrics (16 NYC neighborhood polygons x many dates).
-page = client.get_metrics("2026-demo-nyc-us", limit=5)
+# Fetch one page of its daily heat-risk metrics (1,114 census tracts x many dates).
+page = client.get_metrics("nyc-manhattan-brooklyn-2026", limit=5)
 print(page["total_rows"], "total rows available")
 for row in page["metrics"]:
     print(row["name"], row["date"], row["day_t2m_max"], row["day_hi_max"])
 
-# Pull every row (auto-paged) if you want the whole history in memory.
-all_rows = list(client.iter_metrics("2026-demo-nyc-us"))
+# Pull every row in a date range (auto-paged).
+all_rows = list(client.iter_metrics("nyc-manhattan-brooklyn-2026", date_from="2026-09-01", date_to="2026-09-07"))
 print(len(all_rows), "rows downloaded")
 ```
 
@@ -97,24 +98,24 @@ projects <- client$list_projects()
 nrow(projects$projects)
 
 # Look up the demo project's metadata.
-status <- client$get_project_status("2026-demo-nyc-us")
+status <- client$get_project_status("nyc-manhattan-brooklyn-2026")
 cat(status$status, status$polygon_count, "polygons\n")
-# active 188 polygons
+# active 1114 polygons
 
 # Fetch one page of its daily heat-risk metrics.
-page <- client$get_metrics("2026-demo-nyc-us", limit = 5)
+page <- client$get_metrics("nyc-manhattan-brooklyn-2026", limit = 5)
 cat(page$total_rows, "total rows available\n")
 print(page$metrics[, c("name", "date", "day_t2m_max", "day_hi_max")])
 
-# Pull every row (auto-paged) as one combined data frame.
-all_rows <- client$iter_metrics("2026-demo-nyc-us")
+# Pull every row in a date range (auto-paged) as one combined data frame.
+all_rows <- client$iter_metrics("nyc-manhattan-brooklyn-2026", date_from = "2026-09-01", date_to = "2026-09-07")
 nrow(all_rows)
 ```
 
 ## 5. What you just proved
 
-Both clients: authenticated against production, listed projects, read `2026-demo-nyc-us`'s metadata, fetched
-a page of its daily heat-risk metrics, and downloaded its complete metrics history. That is the same shape
+Both clients: authenticated against production, listed projects, read `nyc-manhattan-brooklyn-2026`'s metadata, fetched
+a page of its daily heat-risk metrics, and downloaded a week of metrics for every tract. That is the same shape
 of read most integrations need — everything else follows the same pattern of one method call per API
 action.
 
@@ -126,6 +127,9 @@ project's boundary geometry after the fact, that has to come from wherever you o
 from this API.
 
 ## Next steps
+
+- The [workshop walkthrough](../walkthrough/) goes further with the same project: one hot day by tract,
+  the tracts with the most hot nights, who lives in them, adding your own data, and creating a project.
 
 - Full per-action reference (payload fields, response shapes, rate limits, error codes, the
   root/org_admin/member/read_only access model): the

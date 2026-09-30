@@ -18,9 +18,9 @@ client <- HeatReadyClient$new(username = "YOUR_USERNAME", key = "YOUR_KEY")
 
 client$status()                                 # public health check, no credentials needed
 client$list_projects()                          # every project visible to you
-client$get_project_status("2026-demo-nyc-us")
-metrics <- client$get_metrics("2026-demo-nyc-us", limit = 10)   # one page
-all_rows <- client$iter_metrics("2026-demo-nyc-us")             # every row, auto-paged, as a data frame
+client$get_project_status("nyc-manhattan-brooklyn-2026")
+metrics <- client$get_metrics("nyc-manhattan-brooklyn-2026", limit = 10)   # one page
+all_rows <- client$iter_metrics("nyc-manhattan-brooklyn-2026", date_from = "2026-09-01")  # every row, auto-paged, as a data frame
 ```
 
 See [`docs/quickstart.md`](../docs/quickstart.md) at the repo root for a full walkthrough against the live

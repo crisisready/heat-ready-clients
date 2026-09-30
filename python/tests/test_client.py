@@ -233,3 +233,15 @@ def test_backfill_lst_days_and_composite_prep_are_mutually_optional(client: Heat
 
     sent = json.loads(responses.calls[0].request.body)
     assert sent["payload"] == {"project_id": "p", "days": 90}
+
+
+@responses.activate
+def test_get_vulnerability_data_sends_paging(client: HeatReadyClient) -> None:
+    import json
+
+    responses.add(responses.POST, EVALUATE_URL, json={"vulnerability": [], "limit": 5000, "offset": 0}, status=200)
+    responses.add(responses.POST, EVALUATE_URL, json={"vulnerability": [], "limit": 500, "offset": 0}, status=200)
+    client.get_vulnerability_data("p", limit=5000)
+    client.get_vulnerability_data("p")
+    assert json.loads(responses.calls[0].request.body)["payload"] == {"project_id": "p", "limit": 5000, "offset": 0}
+    assert json.loads(responses.calls[1].request.body)["payload"] == {"project_id": "p", "limit": 500, "offset": 0}
