@@ -160,6 +160,8 @@ def run(lang, skip_create=False):
     text = open(src, encoding="utf-8").read().replace(TRACTS_URL, TRACTS_LOCAL).replace(CENTERS_URL, CENTERS_LOCAL)
     if skip_create:
         text = without_step_6(lang, text)
+    elif project_exists():
+        sys.exit("my-first-project already exists under this account; delete it or use --skip-create")
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, os.path.basename(src))
         open(path, "w", encoding="utf-8").write(text)
@@ -183,7 +185,7 @@ def run(lang, skip_create=False):
             elif lang == "r" and result.returncode == 0:
                 executed = open(os.path.join(tmp, "executed.md"), encoding="utf-8").read()
                 sys.stdout.write("\n".join(l[3:] for l in executed.splitlines() if l.startswith("## ")) + "\n")
-                if "Error" in executed:
+                if any(l.startswith("## Error") for l in executed.splitlines()):
                     print("an R chunk reported an error")
                     return 1
             return result.returncode
@@ -207,10 +209,29 @@ def without_step_6(lang, text):
     sys.exit("step 6 heading not found")
 
 
-def cleanup():
+def _client():
     sys.path.insert(0, os.path.join(os.path.dirname(HERE), "python", "src"))
-    from heatready import HeatReadyClient, HeatReadyError
-    client = HeatReadyClient(username=os.environ["HEATREADY_USERNAME"], key=os.environ["HEATREADY_KEY"])
+    from heatready import HeatReadyClient
+    return HeatReadyClient(username=os.environ["HEATREADY_USERNAME"], key=os.environ["HEATREADY_KEY"])
+
+
+def project_exists():
+    from heatready import HeatReadyError
+    client = _client()
+    try:
+        client.get_project_status("my-first-project")
+        return True
+    except HeatReadyError as e:
+        if e.code == "project_not_found":
+            return False
+        raise
+
+
+def cleanup():
+    """Delete the project step 6 made. run() refuses to start when it already existed, so this
+    never removes a project the run did not create."""
+    from heatready import HeatReadyError
+    client = _client()
     try:
         print("cleanup:", client.delete_project("my-first-project").get("message"))
     except HeatReadyError as e:
