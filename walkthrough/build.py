@@ -36,6 +36,13 @@ TRACTS_LOCAL = os.path.join(HERE, "data", "nyc-tracts.geojson")
 CENTERS_URL = "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv"
 CENTERS_LOCAL = os.path.join(HERE, "data", "nyc-older-adult-centers.csv")
 FENCE = re.compile(r"^```(\S*)(.*)$")
+# A paragraph that is only an image: the expected result of the code above it. The notebook and
+# the R Markdown file draw their own, so only walkthrough.md and the web page show these.
+IMAGE = re.compile(r"^!\[([^\]]*)\]\(([^)\s]+)\)$")
+
+
+def without_images(text):
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(l for l in text.splitlines() if not IMAGE.match(l.strip()))).strip()
 
 
 def parse(text):
@@ -76,7 +83,7 @@ def build_ipynb(pieces):
 
     for p in pieces:
         if p[0] == "prose":
-            md(p[1])
+            md(without_images(p[1]))
         elif p[1] == "python" and p[2]:
             cells.append({"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": p[3]})
         elif p[1] == "bash":
@@ -100,7 +107,7 @@ def build_rmd(pieces):
     out = [f'---\ntitle: "{title}"\noutput: html_document\n---']
     for p in pieces:
         if p[0] == "prose":
-            text = p[1]
+            text = without_images(p[1])
             if text.startswith("# "):
                 text = text.split("\n", 1)[1].strip() if "\n" in text else ""
             if text:
@@ -126,6 +133,9 @@ def build_json(pieces):
                 elif para.startswith("## "):
                     sections.append({"title": para[3:].strip(), "blocks": []})
                     blocks = sections[-1]["blocks"]
+                elif IMAGE.match(para):
+                    m = IMAGE.match(para)
+                    blocks.append({"type": "image", "alt": m.group(1), "src": m.group(2)})
                 elif para:
                     blocks.append({"type": "prose", "text": " ".join(para.split())})
         elif p[1] in ("python", "bash"):
