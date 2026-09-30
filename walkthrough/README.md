@@ -20,6 +20,9 @@ You need a HeatReady key. At a workshop, claim one at [nishantkishore.com/worksh
   [list of providers with sites open to the public](https://data.cityofnewyork.us/d/u7wp-np5k),
   copied on 30 September 2026.
 
+`figures/` holds the three maps from the Python run, shown in `walkthrough.md` and on the web page as
+the result to expect. Redraw them after a change that alters a map.
+
 ## Editing
 
 `walkthrough.md` is the one source. After changing it, run `python3 walkthrough/build.py` to rewrite

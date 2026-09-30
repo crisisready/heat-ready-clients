@@ -163,6 +163,8 @@ ggplot(hot_day) +
 head(st_drop_geometry(hot_day)[order(-hot_day$tract_high), c("neighborhood", "borough", "tract_high")], 5)
 ```
 
+![Daily high by census tract, 5 June 2026](figures/hot-day.png)
+
 The hottest tracts that afternoon were in Inwood and East Harlem, up to 2.6 °C above the grid cell
 they sit in.
 
@@ -215,6 +217,8 @@ ggplot(risk) +
   labs(title = sprintf("Top quarter of tracts for hot nights (at least %.0f)", cutoff)) +
   theme_void()
 ```
+
+![The top quarter of tracts for hot nights](figures/hot-nights.png)
 
 On 28 September 2026, 311 tracts had at least 74 hot nights out of the 120 tracked since 1 June.
 Many tracts share the same count, so the top quarter holds a few more than a quarter of the city. 284
@@ -284,6 +288,8 @@ ggplot() +
   labs(title = "Highest-risk tracts by who lives there") +
   theme_void()
 ```
+
+![Highest-risk tracts by who lives there](figures/who-lives-there.png)
 
 Of the 311 highest-risk tracts, 78 are in the top quarter for adults 75 and older, 78 for children
 under 5, and 36 for both. Census Tract 116 in Sunset Park, the tract the presentation follows, is one

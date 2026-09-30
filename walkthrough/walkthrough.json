@@ -87,6 +87,11 @@
      "r": "BREAKS <- c(-Inf, 32, 32.5, 33, 33.5, 34, 34.5, 35, Inf)\nLABELS <- c(\"below 32\", \"32 to 32.5\", \"32.5 to 33\", \"33 to 33.5\", \"33.5 to 34\", \"34 to 34.5\", \"34.5 to 35\", \"35 and above\")\nCOLOURS <- c(\"#4575b4\", \"#74add1\", \"#abd9e9\", \"#e0f3f8\", \"#fee090\", \"#fdae61\", \"#f46d43\", \"#d73027\")\n\nhot_day <- merge(tracts, day, by = \"name\")\nhot_day$class <- cut(hot_day$tract_high, BREAKS, labels = LABELS)\nggplot(hot_day) +\n  geom_sf(aes(fill = class), colour = NA) +\n  scale_fill_manual(values = setNames(COLOURS, LABELS), drop = FALSE, name = \"Daily high (\\u00b0C)\") +\n  labs(title = \"Daily high, 5 June 2026\") +\n  theme_void()\n\nhead(st_drop_geometry(hot_day)[order(-hot_day$tract_high), c(\"neighborhood\", \"borough\", \"tract_high\")], 5)"
     },
     {
+     "type": "image",
+     "alt": "Daily high by census tract, 5 June 2026",
+     "src": "figures/hot-day.png"
+    },
+    {
      "type": "prose",
      "text": "The hottest tracts that afternoon were in Inwood and East Harlem, up to 2.6 °C above the grid cell they sit in."
     }
@@ -106,6 +111,11 @@
      "r": "nights <- client$get_nighttime_persistence(PROJECT)\nhot_nights <- data.frame(\n  name           = names(nights$per_tract),\n  hot_nights     = vapply(nights$per_tract, function(t) as.numeric(t$no_relief_count_season), numeric(1)),\n  nights_tracked = vapply(nights$per_tract, function(t) as.numeric(t$n_nights_tracked), numeric(1))\n)\n\nrisk <- merge(tracts, hot_nights, by = \"name\")\ncutoff <- quantile(risk$hot_nights, 0.75)\nrisk$highest_risk <- risk$hot_nights >= cutoff\ncat(\"As of\", nights$as_of_date, \"- cutoff:\", cutoff, \"hot nights\\n\")\ncat(sum(risk$highest_risk), \"highest-risk tracts\\n\")\nhead(sort(table(risk$neighborhood[risk$highest_risk]), decreasing = TRUE), 6)\n\nggplot(risk) +\n  geom_sf(aes(fill = highest_risk), colour = NA) +\n  scale_fill_manual(values = c(`FALSE` = \"grey85\", `TRUE` = \"#d73027\"), guide = \"none\") +\n  labs(title = sprintf(\"Top quarter of tracts for hot nights (at least %.0f)\", cutoff)) +\n  theme_void()"
     },
     {
+     "type": "image",
+     "alt": "The top quarter of tracts for hot nights",
+     "src": "figures/hot-nights.png"
+    },
+    {
      "type": "prose",
      "text": "On 28 September 2026, 311 tracts had at least 74 hot nights out of the 120 tracked since 1 June. Many tracts share the same count, so the top quarter holds a few more than a quarter of the city. 284 of the 311 are in Brooklyn, with the most in Borough Park, Bensonhurst, and Brownsville. The count updates every day, so a later run gives slightly different numbers."
     }
@@ -123,6 +133,11 @@
      "python": "vuln = pd.DataFrame(client.get_vulnerability_data(PROJECT, limit=5000)[\"vulnerability\"])\nages = vuln[[\"name\", \"pop_elderly_75plus\", \"pop_under5\"]]\n\nhigh = risk[risk[\"highest_risk\"]].merge(ages, on=\"name\")\nhigh[\"area_km2\"] = high.to_crs(6933).area / 1e6\nhigh[\"older_per_km2\"] = high[\"pop_elderly_75plus\"] / high[\"area_km2\"]\nhigh[\"young_per_km2\"] = high[\"pop_under5\"] / high[\"area_km2\"]\n\nhigh[\"older\"] = high[\"older_per_km2\"] >= high[\"older_per_km2\"].quantile(0.75)\nhigh[\"young\"] = high[\"young_per_km2\"] >= high[\"young_per_km2\"].quantile(0.75)\nhigh[\"group\"] = np.select(\n    [high[\"older\"] & high[\"young\"], high[\"older\"], high[\"young\"]],\n    [\"Both\", \"Adults 75+\", \"Children under 5\"],\n    default=\"Other highest-risk tracts\",\n)\nprint(high[\"group\"].value_counts())\nprint(high[high[\"group\"] == \"Both\"].nlargest(5, \"hot_nights\")[[\"name\", \"neighborhood\", \"hot_nights\"]])\n\nGROUP_COLOURS = {\"Both\": \"#7b3294\", \"Adults 75+\": \"#d7191c\", \"Children under 5\": \"#2c7bb6\", \"Other highest-risk tracts\": \"#fdae61\"}\nax = risk.plot(color=\"lightgrey\", figsize=(7, 8))\nfor group, colour in GROUP_COLOURS.items():\n    high[high[\"group\"] == group].plot(ax=ax, color=colour, label=group)\nax.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=c) for c in GROUP_COLOURS.values()],\n          labels=list(GROUP_COLOURS), loc=\"upper left\", bbox_to_anchor=(1, 1))\nax.set_title(\"Highest-risk tracts by who lives there\")\nax.set_axis_off()",
      "python_lang": "python",
      "r": "vuln <- client$get_vulnerability_data(PROJECT, limit = 5000)$vulnerability\nages <- vuln[c(\"name\", \"pop_elderly_75plus\", \"pop_under5\")]\n\nhigh <- merge(risk[risk$highest_risk, ], ages, by = \"name\")\nhigh$area_km2 <- as.numeric(st_area(st_transform(high, 6933))) / 1e6\nhigh$older_per_km2 <- high$pop_elderly_75plus / high$area_km2\nhigh$young_per_km2 <- high$pop_under5 / high$area_km2\n\nhigh$older <- high$older_per_km2 >= quantile(high$older_per_km2, 0.75, na.rm = TRUE)\nhigh$young <- high$young_per_km2 >= quantile(high$young_per_km2, 0.75, na.rm = TRUE)\nhigh$group <- ifelse(high$older & high$young, \"Both\",\n              ifelse(high$older, \"Adults 75+\",\n              ifelse(high$young, \"Children under 5\", \"Other highest-risk tracts\")))\ntable(high$group)\nboth <- st_drop_geometry(high[high$group == \"Both\", c(\"name\", \"neighborhood\", \"hot_nights\")])\nhead(both[order(-both$hot_nights), ], 5)\n\nGROUP_COLOURS <- c(\"Both\" = \"#7b3294\", \"Adults 75+\" = \"#d7191c\", \"Children under 5\" = \"#2c7bb6\", \"Other highest-risk tracts\" = \"#fdae61\")\nggplot() +\n  geom_sf(data = risk, fill = \"grey85\", colour = NA) +\n  geom_sf(data = high, aes(fill = group), colour = NA) +\n  scale_fill_manual(values = GROUP_COLOURS, breaks = names(GROUP_COLOURS), name = NULL) +\n  labs(title = \"Highest-risk tracts by who lives there\") +\n  theme_void()"
+    },
+    {
+     "type": "image",
+     "alt": "Highest-risk tracts by who lives there",
+     "src": "figures/who-lives-there.png"
     },
     {
      "type": "prose",
