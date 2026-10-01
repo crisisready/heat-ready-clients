@@ -14,7 +14,7 @@ You need a HeatReady username and key. At a workshop, claim one at
 [nishantkishore.com/workshop](https://nishantkishore.com/workshop) with the code from the slide.
 Otherwise, write to [datascience_crisisready@harvard.edu](mailto:datascience_crisisready@harvard.edu).
 
-Install the client and the two mapping packages this walkthrough uses.
+Install the client and the packages this walkthrough uses.
 
 ```bash
 # Python 3.10 or newer
@@ -22,8 +22,8 @@ pip install "git+https://github.com/crisisready/heat-ready-clients.git#subdirect
 ```
 
 ```r install
-# R
-install.packages(c("remotes", "sf", "ggplot2"))
+# R 4.1 or newer
+install.packages(c("remotes", "sf", "tidyverse"))
 remotes::install_github("crisisready/heat-ready-clients", subdir = "r")
 ```
 
@@ -58,9 +58,9 @@ print(status["polygon_count"], "census tracts")
 ```
 
 ```r
-library(heatready)
+library(tidyverse)
 library(sf)
-library(ggplot2)
+library(heatready)
 
 client <- HeatReadyClient$new(
   username = Sys.getenv("HEATREADY_USERNAME"),
@@ -85,7 +85,7 @@ tracts.plot(color="lightgrey", edgecolor="white", linewidth=0.2, figsize=(6, 7))
 
 ```r
 TRACTS_URL <- "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson"
-tracts <- st_read(TRACTS_URL, quiet = TRUE)
+tracts <- read_sf(TRACTS_URL)
 ggplot(tracts) + geom_sf(fill = "grey85", colour = "white", linewidth = 0.1) + theme_void()
 ```
 
@@ -118,14 +118,16 @@ print(day[["grid_high", "tract_high"]].quantile([0.05, 0.95]).round(1))
 ```r
 rows <- client$iter_metrics(PROJECT, date_from = "2026-06-05", date_to = "2026-06-05")
 
-tract_high <- vapply(seq_len(nrow(rows)), function(i) {
-  ds <- rows$downscaled[[i]]$metrics$day_t2m_max
-  if (is.null(ds)) rows$day_t2m_max[i] else ds
-}, numeric(1))
+day <- rows |>
+  as_tibble() |>
+  transmute(
+    name,
+    grid_high  = day_t2m_max,
+    tract_high = map2_dbl(downscaled, day_t2m_max, \(ds, grid) ds$metrics$day_t2m_max %||% grid)
+  )
 
-day <- data.frame(name = rows$name, grid_high = rows$day_t2m_max, tract_high = tract_high)
-cat(length(unique(round(day$grid_high, 2))), "distinct grid values\n")
-sapply(day[c("grid_high", "tract_high")], quantile, probs = c(0.05, 0.95)) |> round(1)
+day |> summarise(distinct_grid_values = n_distinct(round(grid_high, 2)))
+day |> reframe(across(c(grid_high, tract_high), \(x) round(quantile(x, c(0.05, 0.95)), 1)))
 ```
 
 The grid gives the two boroughs 6 different values, spread over 1.5 °C. Across the tracts, the high
@@ -148,19 +150,24 @@ print(hot_day.nlargest(5, "tract_high")[["neighborhood", "borough", "tract_high"
 ```
 
 ```r
-BREAKS <- c(-Inf, 32, 32.5, 33, 33.5, 34, 34.5, 35, Inf)
-LABELS <- c("below 32", "32 to 32.5", "32.5 to 33", "33 to 33.5", "33.5 to 34", "34 to 34.5", "34.5 to 35", "35 and above")
+BREAKS  <- c(-Inf, 32, 32.5, 33, 33.5, 34, 34.5, 35, Inf)
+LABELS  <- c("below 32", "32 to 32.5", "32.5 to 33", "33 to 33.5", "33.5 to 34", "34 to 34.5", "34.5 to 35", "35 and above")
 COLOURS <- c("#4575b4", "#74add1", "#abd9e9", "#e0f3f8", "#fee090", "#fdae61", "#f46d43", "#d73027")
 
-hot_day <- merge(tracts, day, by = "name")
-hot_day$class <- cut(hot_day$tract_high, BREAKS, labels = LABELS)
+hot_day <- tracts |>
+  inner_join(day, by = "name") |>
+  mutate(class = cut(tract_high, BREAKS, labels = LABELS))
+
 ggplot(hot_day) +
   geom_sf(aes(fill = class), colour = NA) +
-  scale_fill_manual(values = setNames(COLOURS, LABELS), drop = FALSE, name = "Daily high (\u00b0C)") +
+  scale_fill_manual(values = set_names(COLOURS, LABELS), drop = FALSE, name = "Daily high (\u00b0C)") +
   labs(title = "Daily high, 5 June 2026") +
   theme_void()
 
-head(st_drop_geometry(hot_day)[order(-hot_day$tract_high), c("neighborhood", "borough", "tract_high")], 5)
+hot_day |>
+  st_drop_geometry() |>
+  slice_max(tract_high, n = 5, with_ties = FALSE) |>
+  select(neighborhood, borough, tract_high)
 ```
 
 ![Daily high by census tract, 5 June 2026](figures/hot-day.png)
@@ -198,18 +205,24 @@ ax.set_axis_off()
 
 ```r
 nights <- client$get_nighttime_persistence(PROJECT)
-hot_nights <- data.frame(
+
+hot_nights <- tibble(
   name           = names(nights$per_tract),
-  hot_nights     = vapply(nights$per_tract, function(t) as.numeric(t$no_relief_count_season), numeric(1)),
-  nights_tracked = vapply(nights$per_tract, function(t) as.numeric(t$n_nights_tracked), numeric(1))
+  hot_nights     = map_dbl(nights$per_tract, \(t) as.numeric(t$no_relief_count_season)),
+  nights_tracked = map_dbl(nights$per_tract, \(t) as.numeric(t$n_nights_tracked))
 )
 
-risk <- merge(tracts, hot_nights, by = "name")
+risk <- tracts |> inner_join(hot_nights, by = "name")
 cutoff <- quantile(risk$hot_nights, 0.75)
-risk$highest_risk <- risk$hot_nights >= cutoff
+risk <- risk |> mutate(highest_risk = hot_nights >= cutoff)
+
 cat("As of", nights$as_of_date, "- cutoff:", cutoff, "hot nights\n")
 cat(sum(risk$highest_risk), "highest-risk tracts\n")
-head(sort(table(risk$neighborhood[risk$highest_risk]), decreasing = TRUE), 6)
+risk |>
+  st_drop_geometry() |>
+  filter(highest_risk) |>
+  count(neighborhood, sort = TRUE) |>
+  head(6)
 
 ggplot(risk) +
   geom_sf(aes(fill = highest_risk), colour = NA) +
@@ -263,24 +276,36 @@ ax.set_axis_off()
 ```
 
 ```r
-vuln <- client$get_vulnerability_data(PROJECT, limit = 5000)$vulnerability
-ages <- vuln[c("name", "pop_elderly_75plus", "pop_under5")]
-
-high <- merge(risk[risk$highest_risk, ], ages, by = "name")
-high$area_km2 <- as.numeric(st_area(st_transform(high, 6933))) / 1e6
-high$older_per_km2 <- high$pop_elderly_75plus / high$area_km2
-high$young_per_km2 <- high$pop_under5 / high$area_km2
-
-high$older <- high$older_per_km2 >= quantile(high$older_per_km2, 0.75, na.rm = TRUE)
-high$young <- high$young_per_km2 >= quantile(high$young_per_km2, 0.75, na.rm = TRUE)
-high$group <- ifelse(high$older & high$young, "Both",
-              ifelse(high$older, "Adults 75+",
-              ifelse(high$young, "Children under 5", "Other highest-risk tracts")))
-table(high$group)
-both <- st_drop_geometry(high[high$group == "Both", c("name", "neighborhood", "hot_nights")])
-head(both[order(-both$hot_nights), ], 5)
+ages <- client$get_vulnerability_data(PROJECT, limit = 5000)$vulnerability |>
+  as_tibble() |>
+  select(name, pop_elderly_75plus, pop_under5)
 
 GROUP_COLOURS <- c("Both" = "#7b3294", "Adults 75+" = "#d7191c", "Children under 5" = "#2c7bb6", "Other highest-risk tracts" = "#fdae61")
+
+high <- risk |>
+  filter(highest_risk) |>
+  inner_join(ages, by = "name") |>
+  mutate(
+    area_km2      = as.numeric(st_area(st_transform(geometry, 6933))) / 1e6,
+    older_per_km2 = pop_elderly_75plus / area_km2,
+    young_per_km2 = pop_under5 / area_km2,
+    older = older_per_km2 >= quantile(older_per_km2, 0.75, na.rm = TRUE),
+    young = young_per_km2 >= quantile(young_per_km2, 0.75, na.rm = TRUE),
+    group = case_when(
+      older & young ~ "Both",
+      older         ~ "Adults 75+",
+      young         ~ "Children under 5",
+      .default      = "Other highest-risk tracts"
+    )
+  )
+
+high |> st_drop_geometry() |> count(group)
+high |>
+  st_drop_geometry() |>
+  filter(group == "Both") |>
+  slice_max(hot_nights, n = 5, with_ties = FALSE) |>
+  select(name, neighborhood, hot_nights)
+
 ggplot() +
   geom_sf(data = risk, fill = "grey85", colour = NA) +
   geom_sf(data = high, aes(fill = group), colour = NA) +
@@ -320,15 +345,21 @@ print(older[older["centers_400m"] == 0][["neighborhood", "hot_nights"]].sort_val
 
 ```r
 CENTERS_URL <- "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv"
-centers <- read.csv(CENTERS_URL)
-centers <- st_as_sf(centers, coords = c("longitude", "latitude"), crs = 4326)
+centers <- read_csv(CENTERS_URL, show_col_types = FALSE) |>
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
+  st_transform(32618)
 
-older <- st_transform(high[high$older, ], 32618)
-points <- st_transform(centers, 32618)
-older$centers_400m <- lengths(st_is_within_distance(older, points, dist = 400))
+older <- high |>
+  filter(older) |>
+  st_transform(32618) |>
+  mutate(centers_400m = lengths(st_is_within_distance(geometry, centers, dist = 400)))
+
 cat(sum(older$centers_400m > 0), "of", nrow(older), "have a center within 400 m\n")
-no_center <- st_drop_geometry(older[older$centers_400m == 0, c("neighborhood", "hot_nights")])
-no_center[order(-no_center$hot_nights), ]
+older |>
+  st_drop_geometry() |>
+  filter(centers_400m == 0) |>
+  arrange(desc(hot_nights)) |>
+  select(neighborhood, hot_nights)
 ```
 
 57 of the 78 tracts have an older adult center within 400 metres. The other 21 are a natural first
@@ -365,10 +396,12 @@ print(mine[["name", "date", "day_t2m_max", "nighttime_t2m_min"]].tail())
 ```
 
 ```r
-my_areas <- tracts[tracts$geoid %in% c("36047011200", "36047011400", "36047011600"), ]
-my_areas$name <- paste(my_areas$neighborhood, substr(my_areas$geoid, 6, 11))
+my_areas <- tracts |>
+  filter(geoid %in% c("36047011200", "36047011400", "36047011600")) |>
+  mutate(name = str_c(neighborhood, " ", str_sub(geoid, 6, 11))) |>
+  select(name)
 path <- tempfile(fileext = ".geojson")
-st_write(my_areas["name"], path, quiet = TRUE)
+st_write(my_areas, path, quiet = TRUE)
 geojson <- jsonlite::read_json(path)
 # Or read your own file:  geojson <- jsonlite::read_json("my_areas.geojson")
 
@@ -378,8 +411,10 @@ client$create_project(MY_PROJECT, geojson)$message
 while (is.null(client$get_project_status(MY_PROJECT)$start)) Sys.sleep(30)
 cat("Ready\n")
 
-mine <- client$iter_metrics(MY_PROJECT)
-tail(mine[c("name", "date", "day_t2m_max", "nighttime_t2m_min")])
+client$iter_metrics(MY_PROJECT) |>
+  as_tibble() |>
+  select(name, date, day_t2m_max, nighttime_t2m_min) |>
+  tail()
 ```
 
 A new project fills in within a few minutes. It starts with the last two weeks of daily heat metrics,
