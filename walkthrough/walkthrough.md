@@ -22,7 +22,7 @@ pip install "git+https://github.com/crisisready/heat-ready-clients.git#subdirect
 ```
 
 ```r install
-# R 4.1 or newer
+# R 4.1 or newer, with dplyr 1.1 or newer (update.packages() if unsure)
 install.packages(c("remotes", "sf", "tidyverse"))
 remotes::install_github("crisisready/heat-ready-clients", subdir = "r")
 ```

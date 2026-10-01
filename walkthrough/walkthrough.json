@@ -26,7 +26,7 @@
      "type": "code",
      "python": "# Python 3.10 or newer\npip install \"git+https://github.com/crisisready/heat-ready-clients.git#subdirectory=python\" geopandas matplotlib",
      "python_lang": "bash",
-     "r": "# R 4.1 or newer\ninstall.packages(c(\"remotes\", \"sf\", \"tidyverse\"))\nremotes::install_github(\"crisisready/heat-ready-clients\", subdir = \"r\")"
+     "r": "# R 4.1 or newer, with dplyr 1.1 or newer (update.packages() if unsure)\ninstall.packages(c(\"remotes\", \"sf\", \"tidyverse\"))\nremotes::install_github(\"crisisready/heat-ready-clients\", subdir = \"r\")"
     },
     {
      "type": "prose",
