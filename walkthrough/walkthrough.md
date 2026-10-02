@@ -3,7 +3,8 @@
 This walkthrough repeats the analyses from the HeatReady presentation with the Python or R client. It
 starts with one hot day across Manhattan and Brooklyn, finds the census tracts where nights stayed hot
 through the summer, and then looks at where adults 75 and older and children under 5 live within those
-tracts. The last two steps bring in outside data and create a project from your own boundaries.
+tracts. The last steps bring in outside data, create a project from your own boundaries, and run the same map
+for any other public project.
 
 Every step runs against the live HeatReady API. The code comes in Python and R. Pick one language and
 follow it through; the results are the same.
@@ -73,18 +74,18 @@ status <- client$get_project_status(PROJECT)
 cat(status$polygon_count, "census tracts\n")
 ```
 
-The API does not return tract boundaries, so the shapes for mapping come from a file in this
-repository. Each tract's `name` matches the name the API uses, and `neighborhood` is its New York City
+The API does not return tract boundaries, so the shapes for mapping come from a file on the workshop
+site. Each tract's `name` matches the name the API uses, and `neighborhood` is its New York City
 Neighborhood Tabulation Area.
 
 ```python
-TRACTS_URL = "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson"
+TRACTS_URL = "https://nishantkishore.com/workshop/files/nyc-tracts.geojson"
 tracts = gpd.read_file(TRACTS_URL)
 tracts.plot(color="lightgrey", edgecolor="white", linewidth=0.2, figsize=(6, 7)).set_axis_off()
 ```
 
 ```r
-TRACTS_URL <- "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson"
+TRACTS_URL <- "https://nishantkishore.com/workshop/files/nyc-tracts.geojson"
 tracts <- read_sf(TRACTS_URL)
 ggplot(tracts) + geom_sf(fill = "grey85", colour = "white", linewidth = 0.1) + theme_void()
 ```
@@ -332,7 +333,7 @@ repository so the step works for a full room at once. We count the centers withi
 a five-minute walk, of each highest-risk tract with many older residents.
 
 ```python
-CENTERS_URL = "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv"
+CENTERS_URL = "https://nishantkishore.com/workshop/files/nyc-older-adult-centers.csv"
 centers = pd.read_csv(CENTERS_URL)
 centers = gpd.GeoDataFrame(centers, geometry=gpd.points_from_xy(centers["longitude"], centers["latitude"]), crs=4326)
 
@@ -344,7 +345,7 @@ print(older[older["centers_400m"] == 0][["neighborhood", "hot_nights"]].sort_val
 ```
 
 ```r
-CENTERS_URL <- "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv"
+CENTERS_URL <- "https://nishantkishore.com/workshop/files/nyc-older-adult-centers.csv"
 centers <- read_csv(CENTERS_URL, show_col_types = FALSE) |>
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
   st_transform(32618)
@@ -424,7 +425,79 @@ project's history in step 2. The hot-night count in step 3 grows by one night ea
 `backfill_project()` adds up to 30 more days of history before the start date. The tract-level adjustment from step 2 is added by the daily update, which
 runs at 06:00 UTC.
 
+## 7. Try another city
+
+Every HeatReady key can read the public projects below. Each has a boundary file on the workshop site,
+and each feature's `name` matches the name the API returns, so the steps above work on any of them.
+
+| Project | Place | Areas | Boundaries | Shapes from |
+|---|---|---|---|---|
+| `nyc-manhattan-brooklyn-2026` | Manhattan and Brooklyn | 1,114 census tracts | [GeoJSON](https://nishantkishore.com/workshop/files/projects/nyc-manhattan-brooklyn-2026.geojson) | [US Census TIGER/Line 2025](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html) |
+| `boston-cambridge-2026` | Boston and Cambridge | 591 census tracts | [GeoJSON](https://nishantkishore.com/workshop/files/projects/boston-cambridge-2026.geojson) | [US Census TIGER/Line 2025](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html) |
+| `delhi-2026` | Delhi | 446 wards, villages, and towns | [GeoJSON](https://nishantkishore.com/workshop/files/projects/delhi-2026.geojson) | MCD wards (2022) and [geoBoundaries](https://www.geoboundaries.org) |
+| `mexico-example` | Mexico City | 1,182 postal codes | [GeoJSON](https://nishantkishore.com/workshop/files/projects/mexico-example.geojson) | Postal-code areas, names from [SEPOMEX](https://github.com/d3249/mexico_zipcodes) |
+| `2026-demo-paris-fr` | Paris | 992 IRIS blocks | [GeoJSON](https://nishantkishore.com/workshop/files/projects/2026-demo-paris-fr.geojson) | [IGN Contours IRIS](https://geoservices.ign.fr/contoursiris) |
+| `2026-demo-dhaka-bd` | Bangladesh | 64 districts | [GeoJSON](https://nishantkishore.com/workshop/files/projects/2026-demo-dhaka-bd.geojson) | [geoBoundaries](https://www.geoboundaries.org) |
+| `2026-demo-lagos-ng` | Greater Lagos | 21 local government areas | [GeoJSON](https://nishantkishore.com/workshop/files/projects/2026-demo-lagos-ng.geojson) | [geoBoundaries](https://www.geoboundaries.org) |
+| `2026-demo-oaxaca-mx` | Oaxaca highlands | 50 municipios | [GeoJSON](https://nishantkishore.com/workshop/files/projects/2026-demo-oaxaca-mx.geojson) | [geoBoundaries](https://www.geoboundaries.org) |
+| `2026-demo-phoenix-az` | Arizona and neighbouring counties | 17 counties | [GeoJSON](https://nishantkishore.com/workshop/files/projects/2026-demo-phoenix-az.geojson) | [geoBoundaries](https://www.geoboundaries.org) |
+| `2026-demo-seville-es` | Seville and western Andalusia | 120 municipios | [GeoJSON](https://nishantkishore.com/workshop/files/projects/2026-demo-seville-es.geojson) | [geoBoundaries](https://www.geoboundaries.org) |
+
+The code below maps the latest daily high for one project. Change `PROJECT` to any ID in the table.
+The colour scale is fixed from 10 to 40 °C, so the same colour means the same temperature in every
+city.
+
+```python
+from datetime import date, timedelta
+
+PROJECT = "mexico-example"
+BOUNDARIES_URL = f"https://nishantkishore.com/workshop/files/projects/{PROJECT}.geojson"
+areas = gpd.read_file(BOUNDARIES_URL)
+
+since = (date.today() - timedelta(days=7)).isoformat()
+week = pd.DataFrame(client.iter_metrics(PROJECT, date_from=since))
+latest = week[week["date"] == week["date"].max()]
+latest = latest.assign(high=[tract_high(r) for r in latest.to_dict("records")])[["name", "date", "high"]]
+
+city = areas.merge(latest, on="name")
+ax = city.plot(column="high", cmap="RdYlBu_r", vmin=10, vmax=40, legend=True, figsize=(7, 7),
+               legend_kwds={"label": "Daily high (°C)", "shrink": 0.6})
+ax.set_title(f"{PROJECT}, {latest['date'].iloc[0]}")
+ax.set_axis_off()
+print(len(city), "of", len(areas), "areas mapped")
+```
+
+```r
+PROJECT <- "mexico-example"
+BOUNDARIES_URL <- str_glue("https://nishantkishore.com/workshop/files/projects/{PROJECT}.geojson")
+areas <- read_sf(BOUNDARIES_URL)
+
+since <- format(Sys.Date() - 7)
+latest <- client$iter_metrics(PROJECT, date_from = since) |>
+  as_tibble() |>
+  filter(date == max(date)) |>
+  transmute(
+    name, date,
+    high = map2_dbl(downscaled, day_t2m_max, \(ds, grid) ds$metrics$day_t2m_max %||% grid)
+  )
+
+city <- areas |> inner_join(latest, by = "name")
+ggplot(city) +
+  geom_sf(aes(fill = high), colour = NA) +
+  scale_fill_distiller(palette = "RdYlBu", limits = c(10, 40), oob = scales::squish,
+                       name = "Daily high (\u00b0C)") +
+  labs(title = str_glue("{PROJECT}, {latest$date[1]}")) +
+  theme_void()
+cat(nrow(city), "of", nrow(areas), "areas mapped\n")
+```
+
+In Mexico City the daily high in the last week of September ran from about 13 °C in the mountains of the
+southwest to about 30 °C in the east of the city.
+
+The project's own areas replace the census tracts here, so a step that uses NYC-only columns, such as
+`neighborhood` or `borough`, needs those lines dropped for another city.
+
 A workshop key stops working one week after it is claimed, and its projects are deleted then. To keep
 them, make your account permanent at [nishantkishore.com/workshop](https://nishantkishore.com/workshop) before then.
-The full list of API actions is in the
-[API reference](https://github.com/crisisready/heat-risk-data-api/blob/main/docs/api.md).
+The full list of actions a workshop key can use is in the
+[API reference](https://nishantkishore.com/workshop/api).
