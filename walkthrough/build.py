@@ -16,7 +16,7 @@ never executed. Outputs:
   walkthrough.json                     sections of prose and paired python/r code, for the web page
 
 --run needs HEATREADY_USERNAME and HEATREADY_KEY. It reads the two data files from this checkout
-rather than from GitHub, and deletes the project step 6 creates once the run finishes.
+rather than from the workshop site, and deletes the project step 6 creates once the run finishes.
 """
 import argparse
 import json
@@ -31,9 +31,9 @@ SOURCE = os.path.join(HERE, "walkthrough.md")
 OUT_IPYNB = os.path.join(HERE, "python", "heatready-walkthrough.ipynb")
 OUT_RMD = os.path.join(HERE, "r", "heatready-walkthrough.Rmd")
 OUT_JSON = os.path.join(HERE, "walkthrough.json")
-TRACTS_URL = "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson"
+TRACTS_URL = "https://nishantkishore.com/workshop/files/nyc-tracts.geojson"
 TRACTS_LOCAL = os.path.join(HERE, "data", "nyc-tracts.geojson")
-CENTERS_URL = "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv"
+CENTERS_URL = "https://nishantkishore.com/workshop/files/nyc-older-adult-centers.csv"
 CENTERS_LOCAL = os.path.join(HERE, "data", "nyc-older-adult-centers.csv")
 FENCE = re.compile(r"^```(\S*)(.*)$")
 # A paragraph that is only an image: the expected result of the code above it. The notebook and
@@ -133,6 +133,10 @@ def build_json(pieces):
                 elif para.startswith("## "):
                     sections.append({"title": para[3:].strip(), "blocks": []})
                     blocks = sections[-1]["blocks"]
+                elif para.startswith("|"):
+                    lines = [l.strip().strip("|") for l in para.splitlines()]
+                    cells = [[c.strip() for c in l.split("|")] for l in lines if not re.fullmatch(r"[\s|:-]+", l)]
+                    blocks.append({"type": "table", "header": cells[0], "rows": cells[1:]})
                 elif IMAGE.match(para):
                     m = IMAGE.match(para)
                     blocks.append({"type": "image", "alt": m.group(1), "src": m.group(2)})
@@ -205,7 +209,7 @@ def run(lang, skip_create=False):
 
 
 def without_step_6(lang, text):
-    """Drop step 6 (the only step that writes to the API) from a generated file."""
+    """Drop step 6 (the only step that writes to the API) and everything after it from a generated file."""
     marker = "## 6."
     if lang == "r":
         return text[: text.index(marker)]
