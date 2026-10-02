@@ -49,13 +49,13 @@
     },
     {
      "type": "prose",
-     "text": "The API does not return tract boundaries, so the shapes for mapping come from a file on the workshop site. Each tract's `name` matches the name the API uses, and `neighborhood` is its New York City Neighborhood Tabulation Area."
+     "text": "The API does not return tract boundaries, so the shapes for mapping come from a file published with this walkthrough. Each tract's `name` matches the name the API uses, and `neighborhood` is its New York City Neighborhood Tabulation Area."
     },
     {
      "type": "code",
-     "python": "TRACTS_URL = \"https://nishantkishore.com/workshop/files/nyc-tracts.geojson\"\ntracts = gpd.read_file(TRACTS_URL)\ntracts.plot(color=\"lightgrey\", edgecolor=\"white\", linewidth=0.2, figsize=(6, 7)).set_axis_off()",
+     "python": "TRACTS_URL = \"https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson\"\ntracts = gpd.read_file(TRACTS_URL)\ntracts.plot(color=\"lightgrey\", edgecolor=\"white\", linewidth=0.2, figsize=(6, 7)).set_axis_off()",
      "python_lang": "python",
-     "r": "TRACTS_URL <- \"https://nishantkishore.com/workshop/files/nyc-tracts.geojson\"\ntracts <- read_sf(TRACTS_URL)\nggplot(tracts) + geom_sf(fill = \"grey85\", colour = \"white\", linewidth = 0.1) + theme_void()"
+     "r": "TRACTS_URL <- \"https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson\"\ntracts <- read_sf(TRACTS_URL)\nggplot(tracts) + geom_sf(fill = \"grey85\", colour = \"white\", linewidth = 0.1) + theme_void()"
     }
    ]
   },
@@ -158,9 +158,9 @@
     },
     {
      "type": "code",
-     "python": "CENTERS_URL = \"https://nishantkishore.com/workshop/files/nyc-older-adult-centers.csv\"\ncenters = pd.read_csv(CENTERS_URL)\ncenters = gpd.GeoDataFrame(centers, geometry=gpd.points_from_xy(centers[\"longitude\"], centers[\"latitude\"]), crs=4326)\n\nolder = high[high[\"older\"]].to_crs(32618)\npoints = centers.to_crs(32618)\nolder[\"centers_400m\"] = [int((points.distance(shape) <= 400).sum()) for shape in older.geometry]\nprint((older[\"centers_400m\"] > 0).sum(), \"of\", len(older), \"have a center within 400 m\")\nprint(older[older[\"centers_400m\"] == 0][[\"neighborhood\", \"hot_nights\"]].sort_values(\"hot_nights\", ascending=False))",
+     "python": "CENTERS_URL = \"https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv\"\ncenters = pd.read_csv(CENTERS_URL)\ncenters = gpd.GeoDataFrame(centers, geometry=gpd.points_from_xy(centers[\"longitude\"], centers[\"latitude\"]), crs=4326)\n\nolder = high[high[\"older\"]].to_crs(32618)\npoints = centers.to_crs(32618)\nolder[\"centers_400m\"] = [int((points.distance(shape) <= 400).sum()) for shape in older.geometry]\nprint((older[\"centers_400m\"] > 0).sum(), \"of\", len(older), \"have a center within 400 m\")\nprint(older[older[\"centers_400m\"] == 0][[\"neighborhood\", \"hot_nights\"]].sort_values(\"hot_nights\", ascending=False))",
      "python_lang": "python",
-     "r": "CENTERS_URL <- \"https://nishantkishore.com/workshop/files/nyc-older-adult-centers.csv\"\ncenters <- read_csv(CENTERS_URL, show_col_types = FALSE) |>\n  st_as_sf(coords = c(\"longitude\", \"latitude\"), crs = 4326) |>\n  st_transform(32618)\n\nolder <- high |>\n  filter(older) |>\n  st_transform(32618) |>\n  mutate(centers_400m = lengths(st_is_within_distance(geometry, centers, dist = 400)))\n\ncat(sum(older$centers_400m > 0), \"of\", nrow(older), \"have a center within 400 m\\n\")\nolder |>\n  st_drop_geometry() |>\n  filter(centers_400m == 0) |>\n  arrange(desc(hot_nights)) |>\n  select(neighborhood, hot_nights)"
+     "r": "CENTERS_URL <- \"https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv\"\ncenters <- read_csv(CENTERS_URL, show_col_types = FALSE) |>\n  st_as_sf(coords = c(\"longitude\", \"latitude\"), crs = 4326) |>\n  st_transform(32618)\n\nolder <- high |>\n  filter(older) |>\n  st_transform(32618) |>\n  mutate(centers_400m = lengths(st_is_within_distance(geometry, centers, dist = 400)))\n\ncat(sum(older$centers_400m > 0), \"of\", nrow(older), \"have a center within 400 m\\n\")\nolder |>\n  st_drop_geometry() |>\n  filter(centers_400m == 0) |>\n  arrange(desc(hot_nights)) |>\n  select(neighborhood, hot_nights)"
     },
     {
      "type": "prose",
@@ -286,9 +286,9 @@
     },
     {
      "type": "code",
-     "python": "from datetime import date, timedelta\n\nPROJECT = \"mexico-example\"\nBOUNDARIES_URL = f\"https://nishantkishore.com/workshop/files/projects/{PROJECT}.geojson\"\nareas = gpd.read_file(BOUNDARIES_URL)\n\nsince = (date.today() - timedelta(days=7)).isoformat()\nweek = pd.DataFrame(client.iter_metrics(PROJECT, date_from=since))\nlatest = week[week[\"date\"] == week[\"date\"].max()]\nlatest = latest.assign(high=[tract_high(r) for r in latest.to_dict(\"records\")])[[\"name\", \"date\", \"high\"]]\n\ncity = areas.merge(latest, on=\"name\")\nax = city.plot(column=\"high\", cmap=\"RdYlBu_r\", vmin=10, vmax=40, legend=True, figsize=(7, 7),\n               legend_kwds={\"label\": \"Daily high (°C)\", \"shrink\": 0.6})\nax.set_title(f\"{PROJECT}, {latest['date'].iloc[0]}\")\nax.set_axis_off()\nprint(len(city), \"of\", len(areas), \"areas mapped\")",
+     "python": "from datetime import date, timedelta\n\nPROJECT = \"mexico-example\"\nBOUNDARIES_URL = f\"https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/projects/{PROJECT}.geojson\"\nareas = gpd.read_file(BOUNDARIES_URL)\n\nsince = (date.today() - timedelta(days=7)).isoformat()\nweek = pd.DataFrame(client.iter_metrics(PROJECT, date_from=since))\nlatest = week[week[\"date\"] == week[\"date\"].max()]\nlatest = latest.assign(high=[tract_high(r) for r in latest.to_dict(\"records\")])[[\"name\", \"date\", \"high\"]]\n\ncity = areas.merge(latest, on=\"name\")\nax = city.plot(column=\"high\", cmap=\"RdYlBu_r\", vmin=10, vmax=40, legend=True, figsize=(7, 7),\n               legend_kwds={\"label\": \"Daily high (°C)\", \"shrink\": 0.6})\nax.set_title(f\"{PROJECT}, {latest['date'].iloc[0]}\")\nax.set_axis_off()\nprint(len(city), \"of\", len(areas), \"areas mapped\")",
      "python_lang": "python",
-     "r": "PROJECT <- \"mexico-example\"\nBOUNDARIES_URL <- str_glue(\"https://nishantkishore.com/workshop/files/projects/{PROJECT}.geojson\")\nareas <- read_sf(BOUNDARIES_URL)\n\nsince <- format(Sys.Date() - 7)\nlatest <- client$iter_metrics(PROJECT, date_from = since) |>\n  as_tibble() |>\n  filter(date == max(date)) |>\n  transmute(\n    name, date,\n    high = map2_dbl(downscaled, day_t2m_max, \\(ds, grid) ds$metrics$day_t2m_max %||% grid)\n  )\n\ncity <- areas |> inner_join(latest, by = \"name\")\nggplot(city) +\n  geom_sf(aes(fill = high), colour = NA) +\n  scale_fill_distiller(palette = \"RdYlBu\", limits = c(10, 40), oob = scales::squish,\n                       name = \"Daily high (\\u00b0C)\") +\n  labs(title = str_glue(\"{PROJECT}, {latest$date[1]}\")) +\n  theme_void()\ncat(nrow(city), \"of\", nrow(areas), \"areas mapped\\n\")"
+     "r": "PROJECT <- \"mexico-example\"\nBOUNDARIES_URL <- str_glue(\"https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/projects/{PROJECT}.geojson\")\nareas <- read_sf(BOUNDARIES_URL)\n\nsince <- format(Sys.Date() - 7)\nlatest <- client$iter_metrics(PROJECT, date_from = since) |>\n  as_tibble() |>\n  filter(date == max(date)) |>\n  transmute(\n    name, date,\n    high = map2_dbl(downscaled, day_t2m_max, \\(ds, grid) ds$metrics$day_t2m_max %||% grid)\n  )\n\ncity <- areas |> inner_join(latest, by = \"name\")\nggplot(city) +\n  geom_sf(aes(fill = high), colour = NA) +\n  scale_fill_distiller(palette = \"RdYlBu\", limits = c(10, 40), oob = scales::squish,\n                       name = \"Daily high (\\u00b0C)\") +\n  labs(title = str_glue(\"{PROJECT}, {latest$date[1]}\")) +\n  theme_void()\ncat(nrow(city), \"of\", nrow(areas), \"areas mapped\\n\")"
     },
     {
      "type": "prose",

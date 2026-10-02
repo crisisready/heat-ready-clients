@@ -52,12 +52,12 @@ status <- client$get_project_status(PROJECT)
 cat(status$polygon_count, "census tracts\n")
 ```
 
-The API does not return tract boundaries, so the shapes for mapping come from a file on the workshop
-site. Each tract's `name` matches the name the API uses, and `neighborhood` is its New York City
+The API does not return tract boundaries, so the shapes for mapping come from a file published with this
+walkthrough. Each tract's `name` matches the name the API uses, and `neighborhood` is its New York City
 Neighborhood Tabulation Area.
 
 ```{r}
-TRACTS_URL <- "https://nishantkishore.com/workshop/files/nyc-tracts.geojson"
+TRACTS_URL <- "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson"
 tracts <- read_sf(TRACTS_URL)
 ggplot(tracts) + geom_sf(fill = "grey85", colour = "white", linewidth = 0.1) + theme_void()
 ```
@@ -218,7 +218,7 @@ repository so the step works for a full room at once. We count the centers withi
 a five-minute walk, of each highest-risk tract with many older residents.
 
 ```{r}
-CENTERS_URL <- "https://nishantkishore.com/workshop/files/nyc-older-adult-centers.csv"
+CENTERS_URL <- "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv"
 centers <- read_csv(CENTERS_URL, show_col_types = FALSE) |>
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
   st_transform(32618)
@@ -302,7 +302,7 @@ city.
 
 ```{r}
 PROJECT <- "mexico-example"
-BOUNDARIES_URL <- str_glue("https://nishantkishore.com/workshop/files/projects/{PROJECT}.geojson")
+BOUNDARIES_URL <- str_glue("https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/projects/{PROJECT}.geojson")
 areas <- read_sf(BOUNDARIES_URL)
 
 since <- format(Sys.Date() - 7)

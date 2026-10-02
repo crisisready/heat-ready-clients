@@ -74,18 +74,18 @@ status <- client$get_project_status(PROJECT)
 cat(status$polygon_count, "census tracts\n")
 ```
 
-The API does not return tract boundaries, so the shapes for mapping come from a file on the workshop
-site. Each tract's `name` matches the name the API uses, and `neighborhood` is its New York City
+The API does not return tract boundaries, so the shapes for mapping come from a file published with this
+walkthrough. Each tract's `name` matches the name the API uses, and `neighborhood` is its New York City
 Neighborhood Tabulation Area.
 
 ```python
-TRACTS_URL = "https://nishantkishore.com/workshop/files/nyc-tracts.geojson"
+TRACTS_URL = "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson"
 tracts = gpd.read_file(TRACTS_URL)
 tracts.plot(color="lightgrey", edgecolor="white", linewidth=0.2, figsize=(6, 7)).set_axis_off()
 ```
 
 ```r
-TRACTS_URL <- "https://nishantkishore.com/workshop/files/nyc-tracts.geojson"
+TRACTS_URL <- "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson"
 tracts <- read_sf(TRACTS_URL)
 ggplot(tracts) + geom_sf(fill = "grey85", colour = "white", linewidth = 0.1) + theme_void()
 ```
@@ -333,7 +333,7 @@ repository so the step works for a full room at once. We count the centers withi
 a five-minute walk, of each highest-risk tract with many older residents.
 
 ```python
-CENTERS_URL = "https://nishantkishore.com/workshop/files/nyc-older-adult-centers.csv"
+CENTERS_URL = "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv"
 centers = pd.read_csv(CENTERS_URL)
 centers = gpd.GeoDataFrame(centers, geometry=gpd.points_from_xy(centers["longitude"], centers["latitude"]), crs=4326)
 
@@ -345,7 +345,7 @@ print(older[older["centers_400m"] == 0][["neighborhood", "hot_nights"]].sort_val
 ```
 
 ```r
-CENTERS_URL <- "https://nishantkishore.com/workshop/files/nyc-older-adult-centers.csv"
+CENTERS_URL <- "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv"
 centers <- read_csv(CENTERS_URL, show_col_types = FALSE) |>
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
   st_transform(32618)
@@ -451,7 +451,7 @@ city.
 from datetime import date, timedelta
 
 PROJECT = "mexico-example"
-BOUNDARIES_URL = f"https://nishantkishore.com/workshop/files/projects/{PROJECT}.geojson"
+BOUNDARIES_URL = f"https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/projects/{PROJECT}.geojson"
 areas = gpd.read_file(BOUNDARIES_URL)
 
 since = (date.today() - timedelta(days=7)).isoformat()
@@ -469,7 +469,7 @@ print(len(city), "of", len(areas), "areas mapped")
 
 ```r
 PROJECT <- "mexico-example"
-BOUNDARIES_URL <- str_glue("https://nishantkishore.com/workshop/files/projects/{PROJECT}.geojson")
+BOUNDARIES_URL <- str_glue("https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/projects/{PROJECT}.geojson")
 areas <- read_sf(BOUNDARIES_URL)
 
 since <- format(Sys.Date() - 7)

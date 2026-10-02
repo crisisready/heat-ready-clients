@@ -16,6 +16,9 @@ You need a HeatReady key. At a workshop, claim one at [nishantkishore.com/worksh
   with each tract's API name, 2020 GEOID, borough, and Neighborhood Tabulation Area name (NYC Open
   Data, [2020 Census Tracts to 2020 NTAs](https://data.cityofnewyork.us/d/hm78-6dwm)).
   Coordinates rounded to 5 decimal places.
+- `data/projects/<project_id>.geojson`: the boundaries of each public project in step 7, as the API
+  holds them (coordinates rounded to 5 decimal places). The workshop site serves the same files for
+  download.
 - `data/nyc-older-adult-centers.csv`: the 301 older adult centers in NYC Aging's
   [list of providers with sites open to the public](https://data.cityofnewyork.us/d/u7wp-np5k),
   copied on 30 September 2026.
