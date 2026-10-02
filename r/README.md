@@ -1,6 +1,6 @@
 # heatready (R)
 
-R client for the [HeatReady API](https://github.com/crisisready/heat-risk-data-api).
+R client for the [HeatReady API](https://nishantkishore.com/workshop/api).
 
 ## Install
 
@@ -24,8 +24,8 @@ all_rows <- client$iter_metrics("nyc-manhattan-brooklyn-2026", date_from = "2026
 ```
 
 See [`docs/quickstart.md`](../docs/quickstart.md) at the repo root for a full walkthrough against the live
-demo project, and [`docs/api.md`](https://github.com/crisisready/heat-risk-data-api/blob/main/docs/api.md)
-in `heat-risk-data-api` for the complete per-action reference this client wraps.
+demo project, and the [API reference](https://nishantkishore.com/workshop/api)
+for every action this client wraps.
 
 ## Error handling
 

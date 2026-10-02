@@ -85,7 +85,7 @@ normalize_metrics_page <- function(df) {
 #' building the request body by hand.
 #'
 #' See the full API reference at
-#' <https://github.com/crisisready/heat-risk-data-api/blob/main/docs/api.md>
+#' <https://nishantkishore.com/workshop/api>
 #' for per-action payload fields, response shapes, and the access-control
 #' model (root / org_admin / member / read_only / public-project).
 #'

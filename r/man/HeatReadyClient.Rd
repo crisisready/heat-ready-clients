@@ -11,7 +11,7 @@ wraps that envelope so callers write \code{client$list_projects()} instead of
 building the request body by hand.
 
 See the full API reference at
-\url{https://github.com/crisisready/heat-risk-data-api/blob/main/docs/api.md}
+\url{https://nishantkishore.com/workshop/api}
 for per-action payload fields, response shapes, and the access-control
 model (root / org_admin / member / read_only / public-project).
 }

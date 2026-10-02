@@ -1,5 +1,7 @@
 # Quick start: Python and R clients
 
+The same guide, with Python and R side by side: [nishantkishore.com/workshop/quickstart](https://nishantkishore.com/workshop/quickstart).
+
 This walks through installing either client and pulling data from the live public demo project
 **`nyc-manhattan-brooklyn-2026`** (the census tracts of Manhattan and Brooklyn) end to end, in both Python and R. Every command below runs against
 the real, production HeatReady API — there's no local mock server or sandbox involved.
@@ -122,18 +124,16 @@ action.
 ## What these clients can't do
 
 There is no API action to fetch a project's GeoJSON back out once it has been created — GeoJSON is a
-write-only input at project-creation time (see `create_project()` in each client's README). If you need a
-project's boundary geometry after the fact, that has to come from wherever you originally sourced it, not
-from this API.
+write-only input at project-creation time (see `create_project()` in each client's README). Boundary files for the public projects are linked from step 7 of the
+[workshop walkthrough](https://nishantkishore.com/workshop/walkthrough#try-another-city).
 
 ## Next steps
 
 - The [workshop walkthrough](../walkthrough/) goes further with the same project: one hot day by tract,
   the tracts with the most hot nights, who lives in them, adding your own data, and creating a project.
 
-- Full per-action reference (payload fields, response shapes, rate limits, error codes, the
-  root/org_admin/member/read_only access model): the
-  [`heat-risk-data-api` API docs](https://github.com/crisisready/heat-risk-data-api/blob/main/docs/api.md).
+- Every action, with payload fields, response shapes, rate limits and error codes: the
+  [API reference](https://nishantkishore.com/workshop/api).
 - Creating your own project from a GeoJSON boundary file: see "Creating a new project" in the
   [Python](../python/README.md#creating-a-new-project) or [R](../r/README.md#creating-a-new-project) README.
 - Error handling patterns (the `code` field to branch on, and built-in 503 retry behavior): same two READMEs.
