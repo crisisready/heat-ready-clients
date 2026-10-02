@@ -16,7 +16,7 @@ never executed. Outputs:
   walkthrough.json                     sections of prose and paired python/r code, for the web page
 
 --run needs HEATREADY_USERNAME and HEATREADY_KEY. It reads the two data files from this checkout
-rather than from the workshop site, and deletes the project step 6 creates once the run finishes.
+rather than from GitHub, and deletes the project step 6 creates once the run finishes.
 """
 import argparse
 import json
@@ -31,9 +31,11 @@ SOURCE = os.path.join(HERE, "walkthrough.md")
 OUT_IPYNB = os.path.join(HERE, "python", "heatready-walkthrough.ipynb")
 OUT_RMD = os.path.join(HERE, "r", "heatready-walkthrough.Rmd")
 OUT_JSON = os.path.join(HERE, "walkthrough.json")
-TRACTS_URL = "https://nishantkishore.com/workshop/files/nyc-tracts.geojson"
+TRACTS_URL = "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-tracts.geojson"
 TRACTS_LOCAL = os.path.join(HERE, "data", "nyc-tracts.geojson")
-CENTERS_URL = "https://nishantkishore.com/workshop/files/nyc-older-adult-centers.csv"
+CENTERS_URL = "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/nyc-older-adult-centers.csv"
+PROJECTS_URL = "https://raw.githubusercontent.com/crisisready/heat-ready-clients/main/walkthrough/data/projects/"
+PROJECTS_LOCAL = os.path.join(HERE, "data", "projects") + os.sep
 CENTERS_LOCAL = os.path.join(HERE, "data", "nyc-older-adult-centers.csv")
 FENCE = re.compile(r"^```(\S*)(.*)$")
 # A paragraph that is only an image: the expected result of the code above it. The notebook and
@@ -171,7 +173,7 @@ def run(lang, skip_create=False):
         if not os.environ.get(var):
             sys.exit(f"--run needs {var} set")
     src = OUT_IPYNB if lang == "py" else OUT_RMD
-    text = open(src, encoding="utf-8").read().replace(TRACTS_URL, TRACTS_LOCAL).replace(CENTERS_URL, CENTERS_LOCAL)
+    text = open(src, encoding="utf-8").read().replace(TRACTS_URL, TRACTS_LOCAL).replace(CENTERS_URL, CENTERS_LOCAL).replace(PROJECTS_URL, PROJECTS_LOCAL)
     if skip_create:
         text = without_step_6(lang, text)
     elif project_exists():
