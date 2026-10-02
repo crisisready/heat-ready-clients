@@ -17,7 +17,7 @@ test = ["pytest>=7.4", "responses>=0.24"]
 
 [project.urls]
 Homepage = "https://github.com/crisisready/heat-ready-clients"
-"API reference" = "https://github.com/crisisready/heat-risk-data-api/blob/main/docs/api.md"
+"API reference" = "https://nishantkishore.com/workshop/api"
 
 [tool.setuptools.packages.find]
 where = ["src"]

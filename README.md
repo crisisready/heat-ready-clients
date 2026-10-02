@@ -1,6 +1,6 @@
 # heat-ready-clients
 
-Python and R client packages for the [HeatReady API](https://github.com/crisisready/heat-risk-data-api) — a
+Python and R client packages for the [HeatReady API](https://nishantkishore.com/workshop/api) — a
 climate-data API that turns global reanalysis and satellite data into neighborhood-resolution heat-risk
 metrics for disaster responders.
 
@@ -37,11 +37,10 @@ quick-start guide).
 ## Full API reference
 
 Both packages are thin wrappers — for the authoritative per-action documentation (payload fields, response
-shapes, rate limits, and the access-control model), see
-[`docs/api.md`](https://github.com/crisisready/heat-risk-data-api/blob/main/docs/api.md) in the main
-`heat-risk-data-api` repository. One real gap worth knowing up front: there is no API action to fetch a
-project's GeoJSON back out once it has been submitted — GeoJSON is a write-only input at project-creation
-time, not something these clients can download for you.
+shapes, rate limits, and the access-control model), see the
+[HeatReady API reference](https://nishantkishore.com/workshop/api). The API does not return a project's boundaries once it has been
+created. Boundary files for the public projects are linked from step 7 of the
+[workshop walkthrough](https://nishantkishore.com/workshop/walkthrough#try-another-city).
 
 ## License
 
